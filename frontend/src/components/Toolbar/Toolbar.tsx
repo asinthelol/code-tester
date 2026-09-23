@@ -1,12 +1,18 @@
 import Button from '../ui/Button/Button';
-import { ALL_NAV_ITEMS } from '../Sidebar/navItems';
-import ImportFileButton from './ImportFileButton/ImportFileButton';
+import AddButton from './AddButton/AddButton';
+import Breadcrumbs from './Breadcrumbs/Breadcrumbs';
 import type { ImportedFile } from '../../shared/lib/types';
 
 interface ToolbarProps {
   activeSection: string;
   onImport: (file: ImportedFile) => void;
 }
+
+const ADD_BUTTON_LABELS: Record<string, string> = {
+  Files: 'Add File',
+  Repos: 'Add Repo',
+  Tests: 'Add Test',
+};
 
 const BellIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-4">
@@ -20,23 +26,27 @@ const BellIcon = () => (
 );
 
 function Toolbar({ activeSection, onImport }: ToolbarProps) {
-  const current = ALL_NAV_ITEMS.find((item) => item.title === activeSection);
+  const addButtonLabel = ADD_BUTTON_LABELS[activeSection];
+
+  const handleAdd = async () => {
+    if (activeSection === 'Files') {
+      try {
+        const file = await window.electron.importFile();
+        if (file) {
+          onImport(file);
+        }
+      } catch (error) {
+        console.error('Failed to import file:', error);
+      }
+    }
+  };
 
   return (
     <div className="grid grid-cols-[7fr_3fr] items-center border-b border-neutral-300 px-6 py-3 dark:border-neutral-700">
-      <div className="flex min-w-0 items-center gap-2">
-        {current && (
-          <span className="flex size-5 shrink-0 items-center justify-center text-neutral-500 [&>svg]:size-5">
-            {current.icon}
-          </span>
-        )}
-        <h1 className="truncate text-lg font-medium text-neutral-900 dark:text-neutral-100">
-          {activeSection}
-        </h1>
-      </div>
+      <Breadcrumbs items={[activeSection]} />
 
       <div className="flex items-center justify-end gap-3">
-        <ImportFileButton onImport={onImport} />
+        {addButtonLabel && <AddButton label={addButtonLabel} onClick={handleAdd} />}
         <Button aria-label="Notifications" className="p-1.5">
           <BellIcon />
         </Button>
