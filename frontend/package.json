@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "electron/main.ts",
+  "main": ".vite/build/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -14,7 +14,9 @@
     "make": "electron-forge make"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "electron-squirrel-startup": "^1.0.1",
+    "monaco-editor": "^0.56.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
