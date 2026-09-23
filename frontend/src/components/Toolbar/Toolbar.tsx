@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import Button from '../ui/Button/Button';
 import AddButton from './AddButton/AddButton';
+import AddTestModal from './AddTestModal/AddTestModal';
 import Breadcrumbs from './Breadcrumbs/Breadcrumbs';
 import type { ImportedFile } from '../../shared/lib/types';
 
 interface ToolbarProps {
   activeSection: string;
   onImport: (file: ImportedFile) => void;
+  onAddTest: (test: ImportedFile) => void;
 }
 
 const ADD_BUTTON_LABELS: Record<string, string> = {
@@ -25,8 +28,9 @@ const BellIcon = () => (
   </svg>
 );
 
-function Toolbar({ activeSection, onImport }: ToolbarProps) {
+function Toolbar({ activeSection, onImport, onAddTest }: ToolbarProps) {
   const addButtonLabel = ADD_BUTTON_LABELS[activeSection];
+  const [testModalOpen, setTestModalOpen] = useState(false);
 
   const handleAdd = async () => {
     if (activeSection === 'Files') {
@@ -38,6 +42,8 @@ function Toolbar({ activeSection, onImport }: ToolbarProps) {
       } catch (error) {
         console.error('Failed to import file:', error);
       }
+    } else if (activeSection === 'Tests') {
+      setTestModalOpen(true);
     }
   };
 
@@ -51,6 +57,12 @@ function Toolbar({ activeSection, onImport }: ToolbarProps) {
           <BellIcon />
         </Button>
       </div>
+
+      <AddTestModal
+        open={testModalOpen}
+        onClose={() => setTestModalOpen(false)}
+        onAdd={onAddTest}
+      />
     </div>
   );
 }
