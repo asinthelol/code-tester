@@ -24,7 +24,7 @@ function SidebarHeader({ collapsed, onToggle }: SidebarHeaderProps) {
     <Button
       onClick={onToggle}
       aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      className="shrink-0 p-1.5"
+      className="shrink-0 p-3.5"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-5">
         <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
