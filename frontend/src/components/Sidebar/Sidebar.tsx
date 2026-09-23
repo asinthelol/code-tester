@@ -19,7 +19,7 @@ function Sidebar({ activeItem, onNavigate }: SidebarProps) {
     >
       <SidebarHeader collapsed={collapsed} onToggle={() => setCollapsed((prev) => !prev)} />
 
-      <div className="mx-2 border-t border-neutral-300 dark:border-neutral-700" />
+      <div className="-mt-px mx-2 border-t border-neutral-300 dark:border-neutral-700" />
 
       <nav className="flex flex-1 flex-col gap-0.5 py-1">
         {NAV_ITEMS.map((item) => (

@@ -16,7 +16,7 @@ function SideLink({ icon, title, collapsed, active = false, onClick }: SideLinkP
         active={active}
         onClick={onClick}
         aria-label={title}
-        className={`w-full gap-3 px-2.5 py-2 ${collapsed ? 'justify-center' : ''}`}
+        className={`gap-3 ${collapsed ? 'size-12 justify-center' : 'h-12 w-full px-4'}`}
       >
         <span className="flex size-5 shrink-0 items-center justify-center [&>svg]:size-5">
           {icon}

@@ -15,7 +15,7 @@ const ADD_BUTTON_LABELS: Record<string, string> = {
 };
 
 const BellIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-4">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-5">
     <path
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -42,12 +42,12 @@ function Toolbar({ activeSection, onImport }: ToolbarProps) {
   };
 
   return (
-    <div className="grid grid-cols-[7fr_3fr] items-center border-b border-neutral-300 px-6 py-3 dark:border-neutral-700">
+    <div className="grid h-14 grid-cols-[7fr_3fr] items-center border-b border-neutral-300 px-6 dark:border-neutral-700">
       <Breadcrumbs items={[activeSection]} />
 
-      <div className="flex items-center justify-end gap-3">
+      <div className="flex items-center justify-end gap-8">
         {addButtonLabel && <AddButton label={addButtonLabel} onClick={handleAdd} />}
-        <Button aria-label="Notifications" className="p-1.5">
+        <Button aria-label="Notifications" className="size-7 justify-center">
           <BellIcon />
         </Button>
       </div>
