@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import CodeEditor from './components/Editor/CodeEditor/CodeEditor';
-import ActivityRail from './components/Sidebar/ActivityRail/ActivityRail';
+import Sidebar from './components/Sidebar/Sidebar';
 import FileExplorer from './components/Sidebar/FileExplorer/FileExplorer';
-import ImportFileButton from './components/Toolbar/ImportFileButton/ImportFileButton';
+import Toolbar from './components/Toolbar/Toolbar';
 import type { ImportedFile } from './shared/lib/types';
 
 function App() {
   const [files, setFiles] = useState<ImportedFile[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState('Files');
 
   const handleImport = (file: ImportedFile) => {
     setFiles((prev) => {
@@ -26,7 +27,7 @@ function App() {
 
   return (
     <div className="flex h-svh">
-      <ActivityRail />
+      <Sidebar activeItem={activeSection} onNavigate={setActiveSection} />
 
       {files.length > 0 && (
         <FileExplorer
@@ -37,10 +38,7 @@ function App() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center justify-between border-b border-neutral-300 px-6 py-4 dark:border-neutral-700">
-          <h1 className="text-2xl font-medium">Code Tester</h1>
-          <ImportFileButton onImport={handleImport} />
-        </div>
+        <Toolbar activeSection={activeSection} onImport={handleImport} />
 
         {activeFile ? (
           <>
