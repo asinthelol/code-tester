@@ -1,7 +1,7 @@
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
+import type { ImportedFile } from '../src/shared/lib/types.ts';
 
 contextBridge.exposeInMainWorld('electron', {
-  // APIs you want to expose to React will go here
+  importFile: (): Promise<ImportedFile | null> =>
+    ipcRenderer.invoke('file:import'),
 });
-
-console.log('Preload loaded');
