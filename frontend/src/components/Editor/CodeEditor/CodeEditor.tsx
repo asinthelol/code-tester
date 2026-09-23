@@ -12,7 +12,7 @@ function CodeEditor({ path, value }: CodeEditorProps) {
 
   return (
     <Editor
-      height="60svh"
+      height="100%"
       path={path}
       defaultValue={value}
       theme={theme}
