@@ -47,7 +47,7 @@ function Toolbar({ activeSection, onImport }: ToolbarProps) {
 
       <div className="flex items-center justify-end gap-8">
         {addButtonLabel && <AddButton label={addButtonLabel} onClick={handleAdd} />}
-        <Button aria-label="Notifications" className="size-7 justify-center">
+        <Button aria-label="Notifications" className="size-12 justify-center">
           <BellIcon />
         </Button>
       </div>
