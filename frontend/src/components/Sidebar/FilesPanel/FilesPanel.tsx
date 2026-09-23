@@ -9,7 +9,7 @@ interface FilesPanelProps {
 function FilesPanel({ files, activePath, onSelect }: FilesPanelProps) {
   return (
     <div className="flex w-56 flex-col border-r border-neutral-300 dark:border-neutral-700">
-      <div className="flex justify-center items-center px-3 py-2.5 h-14 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+      <div className="flex h-14 items-center justify-center border-b border-neutral-300 px-3 py-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-700">
         Files
       </div>
       <ul className="flex-1 overflow-auto">
@@ -19,7 +19,7 @@ function FilesPanel({ files, activePath, onSelect }: FilesPanelProps) {
               type="button"
               onClick={() => onSelect(file.path)}
               title={file.path}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
+              className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
                 file.path === activePath
                   ? 'bg-neutral-200 dark:bg-neutral-800'
                   : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/50'
