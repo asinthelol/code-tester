@@ -1,15 +1,15 @@
 import type { ImportedFile } from '../../../shared/lib/types';
 
-interface FileExplorerProps {
+interface FilesPanelProps {
   files: ImportedFile[];
   activePath: string | null;
   onSelect: (path: string) => void;
 }
 
-function FileExplorer({ files, activePath, onSelect }: FileExplorerProps) {
+function FilesPanel({ files, activePath, onSelect }: FilesPanelProps) {
   return (
     <div className="flex w-56 flex-col border-r border-neutral-300 dark:border-neutral-700">
-      <div className="px-3 py-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+      <div className="flex justify-center items-center px-3 py-2.5 h-14 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
         Files
       </div>
       <ul className="flex-1 overflow-auto">
@@ -48,4 +48,4 @@ function FileExplorer({ files, activePath, onSelect }: FileExplorerProps) {
   );
 }
 
-export default FileExplorer;
+export default FilesPanel;

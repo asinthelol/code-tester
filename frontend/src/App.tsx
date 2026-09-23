@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import CodeEditor from './components/Editor/CodeEditor/CodeEditor';
 import Sidebar from './components/Sidebar/Sidebar';
-import FileExplorer from './components/Sidebar/FileExplorer/FileExplorer';
+import DashboardPanel from './components/Sidebar/DashboardPanel/DashboardPanel';
+import FilesPanel from './components/Sidebar/FilesPanel/FilesPanel';
+import ReposPanel from './components/Sidebar/ReposPanel/ReposPanel';
+import TestsPanel from './components/Sidebar/TestsPanel/TestsPanel';
 import Toolbar from './components/Toolbar/Toolbar';
 import type { ImportedFile } from './shared/lib/types';
 
@@ -29,13 +32,12 @@ function App() {
     <div className="flex h-svh">
       <Sidebar activeItem={activeSection} onNavigate={setActiveSection} />
 
-      {files.length > 0 && (
-        <FileExplorer
-          files={files}
-          activePath={activePath}
-          onSelect={setActivePath}
-        />
+      {activeSection === 'Dashboard' && <DashboardPanel />}
+      {activeSection === 'Repos' && <ReposPanel />}
+      {activeSection === 'Files' && (
+        <FilesPanel files={files} activePath={activePath} onSelect={setActivePath} />
       )}
+      {activeSection === 'Tests' && <TestsPanel />}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Toolbar activeSection={activeSection} onImport={handleImport} />
