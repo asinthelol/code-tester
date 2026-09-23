@@ -26,7 +26,7 @@ function SidebarHeader({ collapsed, onToggle }: SidebarHeaderProps) {
       aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       className="shrink-0 p-1.5"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-4">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-5">
         <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
         <path d="M9.5 4.5v15" />
       </svg>
@@ -35,12 +35,12 @@ function SidebarHeader({ collapsed, onToggle }: SidebarHeaderProps) {
 
   if (collapsed) {
     return (
-      <div className="flex items-center justify-center px-3 py-3">{toggleButton}</div>
+      <div className="flex h-14 items-center justify-center px-3">{toggleButton}</div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 px-3 py-3">
+    <div className="flex h-14 items-center justify-between gap-2 px-3">
       <div className="flex min-w-0 items-center gap-2">
         {logo}
         <span className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
