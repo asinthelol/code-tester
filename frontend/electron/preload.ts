@@ -6,6 +6,15 @@ contextBridge.exposeInMainWorld('electron', {
   importFile: (): Promise<ImportedFile | null> =>
     ipcRenderer.invoke('file:import'),
 
+  saveFile: (filePath: string, content: string): Promise<void> =>
+    ipcRenderer.invoke('file:save', filePath, content),
+
+  saveFileAs: (
+    content: string,
+    suggestedName: string
+  ): Promise<{ path: string; name: string } | null> =>
+    ipcRenderer.invoke('file:saveAs', content, suggestedName),
+
   runStart: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('run:start', filePath),
 
