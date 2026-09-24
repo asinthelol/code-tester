@@ -1,4 +1,4 @@
-import type { ImportedFile, RunEvent } from './types';
+import type { ImportedFile, RunEvent, RunRequest } from './types';
 
 declare global {
   interface Window {
@@ -9,7 +9,7 @@ declare global {
         content: string,
         suggestedName: string
       ) => Promise<{ path: string; name: string } | null>;
-      runStart: (filePath: string) => Promise<void>;
+      runStart: (request: RunRequest) => Promise<void>;
       runStop: () => Promise<void>;
       onRunEvent: (listener: (event: RunEvent) => void) => () => void;
     };

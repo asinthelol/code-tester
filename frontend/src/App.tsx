@@ -32,6 +32,7 @@ function App() {
   const [activeTestPath, setActiveTestPath] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState('Files');
   const [targetPickerFor, setTargetPickerFor] = useState<string | null>(null);
+  const [runSetupError, setRunSetupError] = useState<string | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
   const handleImport = (file: ImportedFile) => {
@@ -60,6 +61,11 @@ function App() {
   const activeFile = files.find((f) => f.path === activePath) ?? null;
   const activeTest = tests.find((t) => t.path === activeTestPath) ?? null;
   const activeItem = activeSection === 'Tests' ? activeTest : activeFile;
+
+  const getExtension = (filePath: string) => {
+    const match = /\.([^./\\]+)$/.exec(filePath);
+    return match ? match[1].toLowerCase() : '';
+  };
 
   const resolveAndSave = async (
     item: ImportedFile,
@@ -94,21 +100,26 @@ function App() {
   };
 
   const handleRunTest = async () => {
-    if (!activeTest || !editorRef.current) return;
+    if (!activeTest) return;
     if (!activeTest.target) {
       setTargetPickerFor(activeTest.path);
       return;
     }
 
-    const content = editorRef.current.getValue();
-    const saved = await resolveAndSave(activeTest, content);
-    if (!saved) return;
+    const targetFile = files.find((f) => f.path === activeTest.target!.filePath);
+    if (!targetFile) {
+      setRunSetupError('Target file is no longer available. Configure a new target.');
+      return;
+    }
 
-    const updated: TestItem = { ...activeTest, path: saved.path, name: saved.name, content };
-    setTests((prev) => replaceByPath(prev, activeTest.path, updated));
-    if (activeTestPath === activeTest.path) setActiveTestPath(saved.path);
-
-    window.electron.runStart(saved.path);
+    setRunSetupError(null);
+    await window.electron.runStart({
+      sourceContent: targetFile.content,
+      sourceExtension: getExtension(targetFile.path),
+      functionName: activeTest.target.functionName,
+      argsJson: activeTest.target.argsJson,
+      expectedJson: activeTest.target.expectedJson,
+    });
   };
 
   return (
@@ -137,6 +148,9 @@ function App() {
             <div className="flex items-center justify-between border-b border-neutral-300 px-6 py-2 text-sm text-neutral-500 dark:border-neutral-700">
               <span className="truncate">{activeItem.path}</span>
               <div className="ml-4 flex shrink-0 items-center gap-2">
+                {activeSection === 'Tests' && runSetupError && (
+                  <span className="text-xs text-red-500">{runSetupError}</span>
+                )}
                 <button
                   type="button"
                   onClick={handleSave}

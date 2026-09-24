@@ -16,15 +16,26 @@ export interface TestTarget {
   functionName: string;
   startLine: number;
   endLine: number;
+  argsJson: string;
+  expectedJson: string;
 }
 
 export interface TestItem extends ImportedFile {
   target: TestTarget | null;
 }
 
+export interface RunRequest {
+  sourceContent: string;
+  sourceExtension: string;
+  functionName: string;
+  argsJson: string;
+  expectedJson: string;
+}
+
 export type RunEvent =
   | { type: 'started' }
   | { type: 'stdout'; chunk: string }
   | { type: 'stderr'; chunk: string }
+  | { type: 'result'; actual: unknown; expected: unknown; hasExpected: boolean; passed: boolean }
   | { type: 'exit'; exitCode: number | null; status: 'passed' | 'failed' }
   | { type: 'error'; message: string };

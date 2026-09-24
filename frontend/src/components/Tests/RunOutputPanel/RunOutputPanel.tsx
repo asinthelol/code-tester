@@ -55,6 +55,19 @@ function RunOutputPanel() {
         case 'stderr':
           terminal.write(`\x1b[31m${event.chunk}\x1b[0m`);
           break;
+        case 'result': {
+          const actualStr = JSON.stringify(event.actual);
+          if (event.hasExpected) {
+            const color = event.passed ? '\x1b[32m' : '\x1b[31m';
+            const label = event.passed ? 'PASS' : 'FAIL';
+            terminal.write(
+              `${color}${label}\x1b[0m expected ${JSON.stringify(event.expected)}, got ${actualStr}\r\n`
+            );
+          } else {
+            terminal.write(`\x1b[2mReturned: ${actualStr}\x1b[0m\r\n`);
+          }
+          break;
+        }
         case 'exit':
           setStatus(event.status);
           terminal.write(`\x1b[2m\r\nExited with code ${event.exitCode}\x1b[0m\r\n`);

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
-import type { ImportedFile, RunEvent } from '../src/shared/lib/types.ts';
+import type { ImportedFile, RunEvent, RunRequest } from '../src/shared/lib/types.ts';
 
 contextBridge.exposeInMainWorld('electron', {
   importFile: (): Promise<ImportedFile | null> =>
@@ -15,8 +15,8 @@ contextBridge.exposeInMainWorld('electron', {
   ): Promise<{ path: string; name: string } | null> =>
     ipcRenderer.invoke('file:saveAs', content, suggestedName),
 
-  runStart: (filePath: string): Promise<void> =>
-    ipcRenderer.invoke('run:start', filePath),
+  runStart: (request: RunRequest): Promise<void> =>
+    ipcRenderer.invoke('run:start', request),
 
   runStop: (): Promise<void> => ipcRenderer.invoke('run:stop'),
 

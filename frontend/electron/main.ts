@@ -3,6 +3,7 @@ import path from 'node:path';
 import { importFile } from './lib/importFile.ts';
 import { saveFile, saveFileAs } from './lib/saveFile.ts';
 import { runTest, stopTest } from './lib/runTest.ts';
+import type { RunRequest } from '../src/shared/lib/types.ts';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -21,9 +22,9 @@ ipcMain.handle('file:saveAs', (event, content: string, suggestedName: string) =>
   saveFileAs(BrowserWindow.fromWebContents(event.sender), content, suggestedName)
 );
 
-ipcMain.handle('run:start', (event, filePath: string) => {
-  runTest(filePath, (runEvent) => event.sender.send('run:event', runEvent));
-});
+ipcMain.handle('run:start', (event, request: RunRequest) =>
+  runTest(request, (runEvent) => event.sender.send('run:event', runEvent))
+);
 
 ipcMain.handle('run:stop', () => stopTest());
 
