@@ -6,6 +6,7 @@ import FilesPanel from './components/Sidebar/FilesPanel/FilesPanel';
 import ReposPanel from './components/Sidebar/ReposPanel/ReposPanel';
 import TestsPanel from './components/Sidebar/TestsPanel/TestsPanel';
 import SelectFunctionModal from './components/Tests/SelectFunctionModal/SelectFunctionModal';
+import RunOutputPanel from './components/Tests/RunOutputPanel/RunOutputPanel';
 import Toolbar from './components/Toolbar/Toolbar';
 import type { ImportedFile, TestItem, TestTarget } from './shared/lib/types';
 
@@ -60,9 +61,7 @@ function App() {
       setTargetPickerFor(activeTest.path);
       return;
     }
-    console.info(
-      `Run "${activeTest.target.functionName}" from ${activeTest.target.filePath} (execution isn't wired up yet)`
-    );
+    window.electron.runStart(activeTest.path);
   };
 
   return (
@@ -103,6 +102,7 @@ function App() {
             <div className="min-h-0 flex-1">
               <CodeEditor path={activeItem.path} value={activeItem.content} />
             </div>
+            {activeSection === 'Tests' && <RunOutputPanel />}
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, ipcMain } from 'electron';
 import path from 'node:path';
 import { importFile } from './lib/importFile.ts';
+import { runTest, stopTest } from './lib/runTest.ts';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -10,6 +11,14 @@ Menu.setApplicationMenu(null);
 ipcMain.handle('file:import', (event) =>
   importFile(BrowserWindow.fromWebContents(event.sender))
 );
+
+ipcMain.handle('run:start', (event, filePath: string) => {
+  runTest(filePath, (runEvent) => event.sender.send('run:event', runEvent));
+});
+
+ipcMain.handle('run:stop', () => stopTest());
+
+app.on('before-quit', stopTest);
 
 const createWindow = () => {
   const win = new BrowserWindow({

@@ -21,3 +21,10 @@ export interface TestTarget {
 export interface TestItem extends ImportedFile {
   target: TestTarget | null;
 }
+
+export type RunEvent =
+  | { type: 'started' }
+  | { type: 'stdout'; chunk: string }
+  | { type: 'stderr'; chunk: string }
+  | { type: 'exit'; exitCode: number | null; status: 'passed' | 'failed' }
+  | { type: 'error'; message: string };
