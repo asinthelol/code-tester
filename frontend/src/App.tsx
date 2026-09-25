@@ -243,42 +243,18 @@ function App() {
     return match ? match[1].toLowerCase() : '';
   };
 
-  const resolveAndSave = async (
-    item: ImportedFile,
-    content: string
-  ): Promise<{ path: string; name: string } | null> => {
-    if (item.path.startsWith('test:')) {
-      return window.electron.saveFileAs(content, item.name);
-    }
-    await window.electron.saveFile(item.path, content);
-    return { path: item.path, name: item.name };
-  };
-
   const handleSave = async () => {
-    if (!editorRef.current) return;
+    if (!editorRef.current || !activeFile) return;
     const content = editorRef.current.getValue();
-
-    if (activeSection === 'Tests') {
-      if (!activeTest) return;
-      const saved = await resolveAndSave(activeTest, content);
-      if (!saved) return;
-      const updated: TestItem = { ...activeTest, path: saved.path, name: saved.name, content };
-      setTests((prev) => replaceByPath(prev, activeTest.path, updated));
-      if (activeTestPath === activeTest.path) setActiveTestPath(saved.path);
-    } else {
-      if (!activeFile) return;
-      const saved = await resolveAndSave(activeFile, content);
-      if (!saved) return;
-      const updated: ImportedFile = { ...activeFile, path: saved.path, name: saved.name, content };
-      setFiles((prev) => replaceByPath(prev, activeFile.path, updated));
-      if (activePath === activeFile.path) setActivePath(saved.path);
-    }
+    await window.electron.saveFile(activeFile.path, content);
+    const updated: ImportedFile = { ...activeFile, content };
+    setFiles((prev) => replaceByPath(prev, activeFile.path, updated));
   };
 
   const handleRunTest = async () => {
     if (!activeTest) return;
     if (!activeTest.target) {
-      setTargetPickerFor(activeTest.path);
+      setTargetPickerFor(activeTest.id);
       return;
     }
 
