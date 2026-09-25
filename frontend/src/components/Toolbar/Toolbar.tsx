@@ -8,7 +8,7 @@ import type { ImportedFile, IntegrationEnvironment } from '../../shared/lib/type
 interface ToolbarProps {
   activeSection: string;
   onImport: (file: ImportedFile) => void;
-  onAddTest: (test: ImportedFile) => void;
+  onAddTest: (test: { name: string }) => void;
   onAddEnvironment: (environment: IntegrationEnvironment) => void;
 }
 

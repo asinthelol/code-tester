@@ -2,12 +2,12 @@ import type { TestItem } from '../../../shared/lib/types';
 
 interface TestsPanelProps {
   tests: TestItem[];
-  activePath: string | null;
-  onSelect: (path: string) => void;
+  activeId: string | null;
+  onSelect: (id: string) => void;
   onConfigure: (test: TestItem) => void;
 }
 
-function TestsPanel({ tests, activePath, onSelect, onConfigure }: TestsPanelProps) {
+function TestsPanel({ tests, activeId, onSelect, onConfigure }: TestsPanelProps) {
   return (
     <div className="flex w-56 flex-col border-r border-neutral-300 dark:border-neutral-700">
       <div className="flex h-14 items-center justify-center border-b border-neutral-300 px-3 py-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-700">
@@ -22,17 +22,17 @@ function TestsPanel({ tests, activePath, onSelect, onConfigure }: TestsPanelProp
         <ul className="flex-1 overflow-auto">
           {tests.map((test) => (
             <li
-              key={test.path}
+              key={test.id}
               className={`group flex w-full items-center ${
-                test.path === activePath
+                test.id === activeId
                   ? 'bg-neutral-200 dark:bg-neutral-800'
                   : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/50'
               }`}
             >
               <button
                 type="button"
-                onClick={() => onSelect(test.path)}
-                title={test.path}
+                onClick={() => onSelect(test.id)}
+                title={test.target ? `${test.target.functionName} in ${test.target.filePath}` : 'No target configured'}
                 className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-3 text-left text-sm"
               >
                 <svg
