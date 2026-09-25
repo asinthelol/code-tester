@@ -20,7 +20,9 @@ export interface TestTarget {
   expectedJson: string;
 }
 
-export interface TestItem extends ImportedFile {
+export interface TestItem {
+  id: string;
+  name: string;
   target: TestTarget | null;
 }
 
