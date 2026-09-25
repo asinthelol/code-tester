@@ -20,10 +20,15 @@ export interface TestTarget {
   expectedJson: string;
 }
 
-export interface TestItem {
+export type TestSpec =
+  | { kind: 'target'; target: TestTarget | null }
+  | { kind: 'entryPoint'; entryPoint: string };
+
+export interface Test {
   id: string;
   name: string;
-  target: TestTarget | null;
+  environmentPath: string | null;
+  spec: TestSpec;
 }
 
 export interface RunRequest {
@@ -53,13 +58,6 @@ export type EnvironmentEvent =
   | { type: 'environment.ready' }
   | { type: 'environment.failed'; reason: 'timeout' | 'error' | 'cancelled'; message?: string }
   | { type: 'environment.stopped' };
-
-export interface IntegrationTest {
-  id: string;
-  name: string;
-  environmentPath: string;
-  entryPoint: string;
-}
 
 export type EnvironmentStatus =
   | 'idle'
