@@ -2,8 +2,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { emitEvent } from '../../protocol.ts';
+import { getContext } from './context.ts';
 import { defineTest, getRegistered, resetRegistry } from './suite.ts';
-import type { TestDefinition, WorkerContext } from './suite.ts';
+import type { TestDefinition } from './suite.ts';
 import type { NodeRunCommand } from '../../../../protocol/v1/typescript/index.ts';
 
 let cancelled = false;
@@ -99,7 +100,7 @@ export async function runNodeSuite(command: NodeRunCommand): Promise<void> {
     tests: discovered,
   });
 
-  const ctx: WorkerContext = {};
+  const ctx = getContext();
 
   for (const test of tests) {
     if (cancelled) break;

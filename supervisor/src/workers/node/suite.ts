@@ -1,6 +1,6 @@
-export interface WorkerContext {
-  // Phase 3 adds db()/http()/etc. here, built from ASSERTION_SERVICES_JSON.
-}
+import type { WorkerContext } from './context.ts';
+
+export type { WorkerContext };
 
 export interface TestDefinition {
   name: string;
