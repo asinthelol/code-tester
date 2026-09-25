@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import SuiteRunPanel from '../SuiteRunPanel/SuiteRunPanel';
 import type { EnvironmentEvent, IntegrationEnvironment } from '../../../shared/lib/types';
 
 interface EnvironmentDetailProps {
@@ -106,6 +107,8 @@ function EnvironmentDetail({ environment }: EnvironmentDetailProps) {
           ))}
         </ul>
       </div>
+
+      {status === 'ready' && <SuiteRunPanel configPath={environment.path} />}
 
       <div ref={logRef} className="min-h-0 flex-1 overflow-auto bg-[#171717] px-4 py-3 font-mono text-xs text-neutral-300">
         {log.length === 0 ? (
