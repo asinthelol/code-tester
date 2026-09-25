@@ -1,14 +1,56 @@
 import RunOutputPanel from '../RunOutputPanel/RunOutputPanel';
-import type { TestItem } from '../../../shared/lib/types';
+import SuiteResultsPanel from '../SuiteResultsPanel/SuiteResultsPanel';
+import type { EnvironmentStatus, IntegrationEnvironment, SuiteRun, Test } from '../../../shared/lib/types';
 
 interface TestDetailProps {
-  test: TestItem;
+  test: Test;
+  environment: IntegrationEnvironment | null;
+  environmentStatus: EnvironmentStatus;
+  suiteRun: SuiteRun | undefined;
   runSetupError: string | null;
   onRun: () => void;
+  onCancel: () => void;
   onConfigureTarget: () => void;
+  onStartEnvironment: () => void;
+  onStopEnvironment: () => void;
 }
 
-function TestDetail({ test, runSetupError, onRun, onConfigureTarget }: TestDetailProps) {
+const STATUS_LABEL: Record<EnvironmentStatus, string> = {
+  idle: 'Not started',
+  starting: 'Starting…',
+  ready: 'Ready',
+  failed: 'Failed',
+  stopping: 'Stopping…',
+  stopped: 'Stopped',
+};
+
+const STATUS_DOT: Record<EnvironmentStatus, string> = {
+  idle: 'bg-neutral-400',
+  starting: 'bg-amber-400',
+  ready: 'bg-green-500',
+  failed: 'bg-red-500',
+  stopping: 'bg-amber-400',
+  stopped: 'bg-neutral-400',
+};
+
+function TestDetail({
+  test,
+  environment,
+  environmentStatus,
+  suiteRun,
+  runSetupError,
+  onRun,
+  onCancel,
+  onConfigureTarget,
+  onStartEnvironment,
+  onStopEnvironment,
+}: TestDetailProps) {
+  const isSuite = test.spec.kind === 'entryPoint';
+  const environmentBusy = environmentStatus === 'starting' || environmentStatus === 'stopping';
+  const environmentReady = environmentStatus === 'ready';
+  const canRunSuite = !isSuite || !environment || environmentReady;
+  const isRunning = suiteRun?.status === 'running';
+
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b border-neutral-300 px-6 py-2 dark:border-neutral-700">
@@ -19,47 +61,86 @@ function TestDetail({ test, runSetupError, onRun, onConfigureTarget }: TestDetai
           {runSetupError && <span className="text-xs text-red-500">{runSetupError}</span>}
           <button
             type="button"
-            onClick={onRun}
-            className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+            onClick={isSuite && isRunning ? onCancel : onRun}
+            disabled={!canRunSuite}
+            className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
-            Run
+            {isSuite && isRunning ? 'Cancel' : 'Run'}
           </button>
         </div>
       </div>
 
-      <div className="border-b border-neutral-300 px-6 py-3 dark:border-neutral-700">
-        <div className="flex items-center justify-between">
-          <div className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">Target</div>
+      {environment && (
+        <div className="flex items-center justify-between border-b border-neutral-300 px-6 py-3 dark:border-neutral-700">
+          <div className="flex items-center gap-2">
+            <span className={`size-2 rounded-full ${STATUS_DOT[environmentStatus]}`} />
+            <span className="text-sm text-neutral-600 dark:text-neutral-400">
+              {environment.name} — {STATUS_LABEL[environmentStatus]}
+            </span>
+          </div>
           <button
             type="button"
-            onClick={onConfigureTarget}
-            className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
+            onClick={environmentReady || environmentStatus === 'starting' ? onStopEnvironment : onStartEnvironment}
+            disabled={environmentBusy}
+            className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
           >
-            {test.target ? 'Change' : 'Configure'}
+            {environmentReady ? 'Stop' : environmentStatus === 'starting' ? 'Cancel' : 'Start'}
           </button>
         </div>
+      )}
 
-        {test.target ? (
-          <div className="mt-2 flex flex-col gap-1">
-            <div className="text-sm">
-              <span className="font-medium text-neutral-900 dark:text-neutral-100">
-                {test.target.functionName}
-              </span>
-              <span className="ml-2 text-xs text-neutral-500">{test.target.filePath}</span>
-            </div>
-            <div className="font-mono text-xs text-neutral-500">args: {test.target.argsJson}</div>
-            {test.target.expectedJson && (
-              <div className="font-mono text-xs text-neutral-500">
-                expected: {test.target.expectedJson}
-              </div>
-            )}
+      {test.spec.kind === 'target' && (
+        <div className="border-b border-neutral-300 px-6 py-3 dark:border-neutral-700">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">Target</div>
+            <button
+              type="button"
+              onClick={onConfigureTarget}
+              className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
+            >
+              {test.spec.target ? 'Change' : 'Configure'}
+            </button>
           </div>
-        ) : (
-          <p className="mt-2 text-sm text-neutral-500">No target configured yet.</p>
-        )}
-      </div>
 
-      <RunOutputPanel />
+          {test.spec.target ? (
+            <div className="mt-2 flex flex-col gap-1">
+              <div className="text-sm">
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                  {test.spec.target.functionName}
+                </span>
+                <span className="ml-2 text-xs text-neutral-500">{test.spec.target.filePath}</span>
+              </div>
+              <div className="font-mono text-xs text-neutral-500">args: {test.spec.target.argsJson}</div>
+              {test.spec.target.expectedJson && (
+                <div className="font-mono text-xs text-neutral-500">
+                  expected: {test.spec.target.expectedJson}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-neutral-500">No target configured yet.</p>
+          )}
+        </div>
+      )}
+
+      {test.spec.kind === 'entryPoint' && (
+        <div className="border-b border-neutral-300 px-6 py-3 dark:border-neutral-700">
+          <div className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">Entry point</div>
+          <div className="mt-2 font-mono text-sm text-neutral-900 dark:text-neutral-100">
+            {test.spec.entryPoint}
+          </div>
+        </div>
+      )}
+
+      {test.spec.kind === 'target' ? (
+        <RunOutputPanel />
+      ) : environment && !environmentReady ? (
+        <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
+          Start the environment to run this test
+        </div>
+      ) : (
+        <SuiteResultsPanel run={suiteRun} />
+      )}
     </div>
   );
 }
