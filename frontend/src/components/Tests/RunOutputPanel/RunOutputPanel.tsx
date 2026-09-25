@@ -87,7 +87,7 @@ function RunOutputPanel() {
   }, []);
 
   return (
-    <div className="flex h-64 flex-col border-t border-neutral-300 dark:border-neutral-700">
+    <div className="flex min-h-0 flex-1 flex-col border-t border-neutral-300 dark:border-neutral-700">
       <div className="flex items-center justify-between px-3 py-1.5">
         <div className="flex items-center gap-2 text-xs font-medium text-neutral-600 dark:text-neutral-400">
           <span className={`size-2 rounded-full ${STATUS_DOT[status]}`} />

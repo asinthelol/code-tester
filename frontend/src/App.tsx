@@ -9,7 +9,7 @@ import FilesPanel from './components/Sidebar/FilesPanel/FilesPanel';
 import ReposPanel from './components/Sidebar/ReposPanel/ReposPanel';
 import TestsPanel from './components/Sidebar/TestsPanel/TestsPanel';
 import SelectFunctionModal from './components/Tests/SelectFunctionModal/SelectFunctionModal';
-import RunOutputPanel from './components/Tests/RunOutputPanel/RunOutputPanel';
+import TestDetail from './components/Tests/TestDetail/TestDetail';
 import Toolbar from './components/Toolbar/Toolbar';
 import type {
   EnvironmentStatus,
@@ -39,7 +39,7 @@ function App() {
   const [files, setFiles] = useState<ImportedFile[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [tests, setTests] = useState<TestItem[]>([]);
-  const [activeTestPath, setActiveTestPath] = useState<string | null>(null);
+  const [activeTestId, setActiveTestId] = useState<string | null>(null);
   const [environments, setEnvironments] = useState<IntegrationEnvironment[]>([]);
   const [activeEnvironmentPath, setActiveEnvironmentPath] = useState<string | null>(null);
   const [integrationTests, setIntegrationTests] = useState<IntegrationTest[]>([]);
@@ -192,9 +192,10 @@ function App() {
     setActivePath(file.path);
   };
 
-  const handleAddTest = (file: ImportedFile) => {
-    setTests((prev) => upsertByPath(prev, { ...file, target: null }));
-    setActiveTestPath(file.path);
+  const handleAddTest = (test: { name: string }) => {
+    const id = crypto.randomUUID();
+    setTests((prev) => [...prev, { id, name: test.name, target: null }]);
+    setActiveTestId(id);
   };
 
   const handleAddEnvironment = (environment: IntegrationEnvironment) => {
@@ -218,7 +219,7 @@ function App() {
   const handleSelectTarget = (target: TestTarget) => {
     if (!targetPickerFor) return;
     setTests((prev) =>
-      prev.map((t) => (t.path === targetPickerFor ? { ...t, target } : t))
+      prev.map((t) => (t.id === targetPickerFor ? { ...t, target } : t))
     );
     setTargetPickerFor(null);
   };
@@ -229,10 +230,9 @@ function App() {
   };
 
   const activeFile = files.find((f) => f.path === activePath) ?? null;
-  const activeTest = tests.find((t) => t.path === activeTestPath) ?? null;
+  const activeTest = tests.find((t) => t.id === activeTestId) ?? null;
   const activeEnvironment =
     environments.find((e) => e.path === activeEnvironmentPath) ?? null;
-  const activeItem = activeSection === 'Tests' ? activeTest : activeFile;
   const displayedEnvironmentStatus =
     activeEnvironmentPath && activeEnvironmentPath === runningEnvironmentPath
       ? environmentStatus
