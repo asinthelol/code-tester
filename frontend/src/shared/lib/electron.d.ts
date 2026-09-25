@@ -5,6 +5,7 @@ import type {
   RunEvent,
   RunRequest,
 } from './types';
+import type { Event as SupervisorEvent } from '../../../../protocol/v1/typescript/index.ts';
 
 declare global {
   interface Window {
@@ -23,6 +24,9 @@ declare global {
       environmentCancelStart: () => Promise<void>;
       environmentStop: (configPath: string) => Promise<void>;
       onEnvironmentEvent: (listener: (event: EnvironmentEvent) => void) => () => void;
+      supervisorExecute: (runId: string, entryPoint: string) => Promise<void>;
+      supervisorCancel: (runId: string, configPath: string) => Promise<void>;
+      onSupervisorEvent: (listener: (event: SupervisorEvent) => void) => () => void;
     };
   }
 }

@@ -7,6 +7,7 @@ import type {
   RunEvent,
   RunRequest,
 } from '../src/shared/lib/types.ts';
+import type { Event as SupervisorEvent } from '../../protocol/v1/typescript/index.ts';
 
 contextBridge.exposeInMainWorld('electron', {
   importFile: (): Promise<ImportedFile | null> =>
@@ -48,5 +49,17 @@ contextBridge.exposeInMainWorld('electron', {
     const handler = (_event: IpcRendererEvent, payload: EnvironmentEvent) => listener(payload);
     ipcRenderer.on('environment:event', handler);
     return () => ipcRenderer.removeListener('environment:event', handler);
+  },
+
+  supervisorExecute: (runId: string, entryPoint: string): Promise<void> =>
+    ipcRenderer.invoke('supervisor:execute', runId, entryPoint),
+
+  supervisorCancel: (runId: string, configPath: string): Promise<void> =>
+    ipcRenderer.invoke('supervisor:cancel', runId, configPath),
+
+  onSupervisorEvent: (listener: (event: SupervisorEvent) => void): (() => void) => {
+    const handler = (_event: IpcRendererEvent, payload: SupervisorEvent) => listener(payload);
+    ipcRenderer.on('supervisor:event', handler);
+    return () => ipcRenderer.removeListener('supervisor:event', handler);
   },
 });

@@ -9,7 +9,15 @@ import {
   startEnvironment,
   stopEnvironment,
 } from './lib/environment.ts';
+import {
+  attachSupervisor,
+  cancelSuite,
+  detachSupervisor,
+  executeSuite,
+} from './lib/supervisor.ts';
 import type { RunRequest } from '../src/shared/lib/types.ts';
+
+
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -39,20 +47,44 @@ ipcMain.handle('environment:import', (event) =>
 );
 
 ipcMain.handle('environment:start', (event, configPath: string) =>
-  startEnvironment(configPath, (envEvent) =>
-    event.sender.send('environment:event', envEvent)
-  )
+  startEnvironment(configPath, (envEvent) => {
+    event.sender.send('environment:event', envEvent);
+    if (envEvent.type === 'environment.ready') {
+      attachSupervisor(configPath, (supervisorEvent) =>
+        event.sender.send('supervisor:event', supervisorEvent)
+      );
+    }
+  })
 );
 
 ipcMain.handle('environment:cancelStart', () => cancelStart());
 
-ipcMain.handle('environment:stop', (event, configPath: string) =>
-  stopEnvironment(configPath, (envEvent) =>
+ipcMain.handle('environment:stop', (event, configPath: string) => {
+  detachSupervisor();
+  return stopEnvironment(configPath, (envEvent) =>
     event.sender.send('environment:event', envEvent)
-  )
+  );
+});
+
+ipcMain.handle('supervisor:execute', (_event, runId: string, entryPoint: string) =>
+  executeSuite(runId, entryPoint)
 );
 
-app.on('before-quit', stopTest);
+ipcMain.handle('supervisor:cancel', (event, runId: string, configPath: string) =>
+  cancelSuite(runId, configPath, () => {
+    console.warn(`Supervisor did not acknowledge cancel for run ${runId}; force-killed.`);
+    event.sender.send('supervisor:event', {
+      protocolVersion: 1,
+      runId,
+      type: 'run.aborted',
+    });
+  })
+);
+
+app.on('before-quit', () => {
+  stopTest();
+  detachSupervisor();
+});
 
 const createWindow = () => {
   const win = new BrowserWindow({
