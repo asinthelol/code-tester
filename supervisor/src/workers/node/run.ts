@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { emitEvent } from '../../protocol.ts';
 import { defineTest, getRegistered, resetRegistry } from './suite.ts';
 import type { TestDefinition, WorkerContext } from './suite.ts';
@@ -8,6 +10,22 @@ let cancelled = false;
 
 export function cancelNodeRun(): void {
   cancelled = true;
+}
+
+// Node doesn't know how to force imports without giving a new string
+// Thus, here is a function who's purpose is to fool the app into thinking
+// i gave it a new string when its actually the old one!
+async function importFresh(modulePath: string): Promise<void> {
+  const dir = path.dirname(modulePath);
+  const ext = path.extname(modulePath);
+  const tempPath = path.join(dir, `.run-${crypto.randomUUID()}${ext}`);
+
+  await fs.copyFile(modulePath, tempPath);
+  try {
+    await import(tempPath);
+  } finally {
+    await fs.rm(tempPath, { force: true });
+  }
 }
 
 async function withCapturedConsole(
@@ -54,7 +72,7 @@ export async function runNodeSuite(command: NodeRunCommand): Promise<void> {
   emitEvent({ protocolVersion: 1, runId, type: 'run.started' });
 
   try {
-    await import(`/suite/${entryPoint}`);
+    await importFresh(`/suite/${entryPoint}`);
   } catch (error) {
     emitEvent({
       protocolVersion: 1,

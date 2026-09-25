@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { editor } from 'monaco-editor';
 import CodeEditor from './components/Editor/CodeEditor/CodeEditor';
 import EnvironmentDetail from './components/Environments/EnvironmentDetail/EnvironmentDetail';
@@ -12,9 +12,11 @@ import SelectFunctionModal from './components/Tests/SelectFunctionModal/SelectFu
 import RunOutputPanel from './components/Tests/RunOutputPanel/RunOutputPanel';
 import Toolbar from './components/Toolbar/Toolbar';
 import type {
+  EnvironmentStatus,
   ImportedFile,
   IntegrationEnvironment,
   IntegrationTest,
+  SuiteRun,
   TestItem,
   TestTarget,
 } from './shared/lib/types';
@@ -41,10 +43,149 @@ function App() {
   const [environments, setEnvironments] = useState<IntegrationEnvironment[]>([]);
   const [activeEnvironmentPath, setActiveEnvironmentPath] = useState<string | null>(null);
   const [integrationTests, setIntegrationTests] = useState<IntegrationTest[]>([]);
+  const [selectedIntegrationTestId, setSelectedIntegrationTestId] = useState<string | null>(
+    null
+  );
   const [activeSection, setActiveSection] = useState('Files');
   const [targetPickerFor, setTargetPickerFor] = useState<string | null>(null);
   const [runSetupError, setRunSetupError] = useState<string | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+
+  // Environment/supervisor connections live here rather than in the
+  // components that render it. Otherwise navigating away and back would
+  // unmount those components and lose track of what's actually still running.
+  // Man I gotta shorten this file.
+  const [runningEnvironmentPath, setRunningEnvironmentPath] = useState<string | null>(null);
+  const [environmentStatus, setEnvironmentStatus] = useState<EnvironmentStatus>('idle');
+  const [environmentLog, setEnvironmentLog] = useState<string[]>([]);
+  const [suiteRuns, setSuiteRuns] = useState<Record<string, SuiteRun>>({});
+  const runIdToTestId = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    const unsubscribe = window.electron.onEnvironmentEvent((event) => {
+      switch (event.type) {
+        case 'compose.status':
+          setEnvironmentLog((prev) => [...prev, event.message]);
+          break;
+        case 'environment.ready':
+          setEnvironmentStatus('ready');
+          break;
+        case 'environment.failed':
+          setEnvironmentStatus('failed');
+          setEnvironmentLog((prev) => [
+            ...prev,
+            `Failed (${event.reason})${event.message ? `: ${event.message}` : ''}`,
+          ]);
+          break;
+        case 'environment.stopped':
+          setEnvironmentStatus('stopped');
+          break;
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = window.electron.onSupervisorEvent((event) => {
+      const testId = runIdToTestId.current[event.runId];
+      if (!testId) return;
+
+      setSuiteRuns((prev) => {
+        const run = prev[testId];
+        if (!run) return prev;
+
+        switch (event.type) {
+          case 'suite.discovered': {
+            const testOrder = event.tests.map((t) => t.id);
+            const tests = Object.fromEntries(
+              event.tests.map((t) => [t.id, { name: t.name, status: 'pending' as const, output: [] }])
+            );
+            return { ...prev, [testId]: { ...run, testOrder, tests } };
+          }
+          case 'test.started':
+            return {
+              ...prev,
+              [testId]: {
+                ...run,
+                tests: {
+                  ...run.tests,
+                  [event.testId]: { ...run.tests[event.testId], status: 'running' },
+                },
+              },
+            };
+          case 'test.stdout':
+          case 'test.stderr':
+            return {
+              ...prev,
+              [testId]: {
+                ...run,
+                tests: {
+                  ...run.tests,
+                  [event.testId]: {
+                    ...run.tests[event.testId],
+                    output: [...(run.tests[event.testId]?.output ?? []), event.chunk],
+                  },
+                },
+              },
+            };
+          case 'test.finished':
+            return {
+              ...prev,
+              [testId]: {
+                ...run,
+                tests: {
+                  ...run.tests,
+                  [event.testId]: {
+                    ...run.tests[event.testId],
+                    status: event.status,
+                    durationMs: event.durationMs,
+                    error: event.error,
+                  },
+                },
+              },
+            };
+          case 'run.completed':
+            return { ...prev, [testId]: { ...run, status: 'completed' } };
+          case 'run.failed':
+            return { ...prev, [testId]: { ...run, status: 'failed', failedReason: event.reason } };
+          case 'run.aborted':
+            return { ...prev, [testId]: { ...run, status: 'aborted' } };
+          default:
+            return prev;
+        }
+      });
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleStartEnvironment = async (configPath: string) => {
+    setRunningEnvironmentPath(configPath);
+    setEnvironmentStatus('starting');
+    setEnvironmentLog([]);
+    await window.electron.environmentStart(configPath);
+  };
+
+  const handleStopEnvironment = async (configPath: string) => {
+    setEnvironmentStatus('stopping');
+    await window.electron.environmentStop(configPath);
+    setRunningEnvironmentPath(null);
+  };
+
+  const handleRunSuite = async (test: IntegrationTest) => {
+    const runId = crypto.randomUUID();
+    runIdToTestId.current[runId] = test.id;
+    setSuiteRuns((prev) => ({
+      ...prev,
+      [test.id]: { runId, status: 'running', failedReason: null, testOrder: [], tests: {} },
+    }));
+    await window.electron.supervisorExecute(runId, test.entryPoint);
+  };
+
+  const handleCancelSuite = async (test: IntegrationTest, configPath: string) => {
+    const run = suiteRuns[test.id];
+    if (!run) return;
+    await window.electron.supervisorCancel(run.runId, configPath);
+  };
 
   const handleImport = (file: ImportedFile) => {
     setFiles((prev) => upsertByPath(prev, file));
@@ -92,6 +233,10 @@ function App() {
   const activeEnvironment =
     environments.find((e) => e.path === activeEnvironmentPath) ?? null;
   const activeItem = activeSection === 'Tests' ? activeTest : activeFile;
+  const displayedEnvironmentStatus =
+    activeEnvironmentPath && activeEnvironmentPath === runningEnvironmentPath
+      ? environmentStatus
+      : 'idle';
 
   const getExtension = (filePath: string) => {
     const match = /\.([^./\\]+)$/.exec(filePath);
@@ -174,7 +319,10 @@ function App() {
         <EnvironmentsPanel
           environments={environments}
           activePath={activeEnvironmentPath}
-          onSelect={setActiveEnvironmentPath}
+          onSelect={(path) => {
+            setActiveEnvironmentPath(path);
+            setSelectedIntegrationTestId(null);
+          }}
         />
       )}
 
@@ -189,12 +337,20 @@ function App() {
         {activeSection === 'Environments' ? (
           activeEnvironment ? (
             <EnvironmentDetail
-              key={activeEnvironment.path}
               environment={activeEnvironment}
+              status={displayedEnvironmentStatus}
+              log={activeEnvironmentPath === runningEnvironmentPath ? environmentLog : []}
+              onStart={() => handleStartEnvironment(activeEnvironment.path)}
+              onStop={() => handleStopEnvironment(activeEnvironment.path)}
               integrationTests={integrationTests.filter(
                 (t) => t.environmentPath === activeEnvironment.path
               )}
               onAddIntegrationTest={handleAddIntegrationTest}
+              selectedTestId={selectedIntegrationTestId}
+              onSelectTest={setSelectedIntegrationTestId}
+              suiteRuns={suiteRuns}
+              onRunSuite={handleRunSuite}
+              onCancelSuite={(test) => handleCancelSuite(test, activeEnvironment.path)}
             />
           ) : (
             <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">

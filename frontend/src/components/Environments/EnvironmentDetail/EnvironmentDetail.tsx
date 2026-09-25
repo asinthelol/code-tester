@@ -2,20 +2,28 @@ import { useEffect, useRef, useState } from 'react';
 import AddIntegrationTestModal from '../AddIntegrationTestModal/AddIntegrationTestModal';
 import SuiteRunPanel from '../SuiteRunPanel/SuiteRunPanel';
 import type {
-  EnvironmentEvent,
+  EnvironmentStatus,
   IntegrationEnvironment,
   IntegrationTest,
+  SuiteRun,
 } from '../../../shared/lib/types';
 
 interface EnvironmentDetailProps {
   environment: IntegrationEnvironment;
+  status: EnvironmentStatus;
+  log: string[];
+  onStart: () => void;
+  onStop: () => void;
   integrationTests: IntegrationTest[];
   onAddIntegrationTest: (test: { name: string; entryPoint: string }) => void;
+  selectedTestId: string | null;
+  onSelectTest: (id: string) => void;
+  suiteRuns: Record<string, SuiteRun>;
+  onRunSuite: (test: IntegrationTest) => void;
+  onCancelSuite: (test: IntegrationTest) => void;
 }
 
-type Status = 'idle' | 'starting' | 'ready' | 'failed' | 'stopping' | 'stopped';
-
-const STATUS_LABEL: Record<Status, string> = {
+const STATUS_LABEL: Record<EnvironmentStatus, string> = {
   idle: 'Not started',
   starting: 'Starting…',
   ready: 'Ready',
@@ -24,7 +32,7 @@ const STATUS_LABEL: Record<Status, string> = {
   stopped: 'Stopped',
 };
 
-const STATUS_DOT: Record<Status, string> = {
+const STATUS_DOT: Record<EnvironmentStatus, string> = {
   idle: 'bg-neutral-400',
   starting: 'bg-amber-400',
   ready: 'bg-green-500',
@@ -35,56 +43,27 @@ const STATUS_DOT: Record<Status, string> = {
 
 function EnvironmentDetail({
   environment,
+  status,
+  log,
+  onStart,
+  onStop,
   integrationTests,
   onAddIntegrationTest,
+  selectedTestId,
+  onSelectTest,
+  suiteRuns,
+  onRunSuite,
+  onCancelSuite,
 }: EnvironmentDetailProps) {
-  const [status, setStatus] = useState<Status>('idle');
-  const [log, setLog] = useState<string[]>([]);
-  const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const logRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = window.electron.onEnvironmentEvent((event: EnvironmentEvent) => {
-      switch (event.type) {
-        case 'compose.status':
-          setLog((prev) => [...prev, event.message]);
-          break;
-        case 'environment.ready':
-          setStatus('ready');
-          break;
-        case 'environment.failed':
-          setStatus('failed');
-          setLog((prev) => [
-            ...prev,
-            `Failed (${event.reason})${event.message ? `: ${event.message}` : ''}`,
-          ]);
-          break;
-        case 'environment.stopped':
-          setStatus('stopped');
-          break;
-      }
-    });
-
-    return unsubscribe;
-  }, [environment.path]);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [log]);
 
-  const handleStart = async () => {
-    setStatus('starting');
-    setLog([]);
-    await window.electron.environmentStart(environment.path);
-  };
-
-  const handleStop = async () => {
-    setStatus('stopping');
-    await window.electron.environmentStop(environment.path);
-  };
-
   const isBusy = status === 'starting' || status === 'stopping';
+  const selectedTest = integrationTests.find((test) => test.id === selectedTestId) ?? null;
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
@@ -93,7 +72,7 @@ function EnvironmentDetail({
         <div className="ml-4 flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={status === 'ready' || status === 'starting' ? handleStop : handleStart}
+            onClick={status === 'ready' || status === 'starting' ? onStop : onStart}
             disabled={isBusy}
             className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
@@ -145,7 +124,7 @@ function EnvironmentDetail({
                   <li key={test.id}>
                     <button
                       type="button"
-                      onClick={() => setSelectedTestId(test.id)}
+                      onClick={() => onSelectTest(test.id)}
                       className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${
                         test.id === selectedTestId
                           ? 'bg-neutral-200 dark:bg-neutral-800'
@@ -163,16 +142,15 @@ function EnvironmentDetail({
             )}
           </div>
 
-          {integrationTests
-            .filter((test) => test.id === selectedTestId)
-            .map((test) => (
-              <SuiteRunPanel
-                key={test.id}
-                configPath={environment.path}
-                testName={test.name}
-                entryPoint={test.entryPoint}
-              />
-            ))}
+          {selectedTest && (
+            <SuiteRunPanel
+              testName={selectedTest.name}
+              entryPoint={selectedTest.entryPoint}
+              run={suiteRuns[selectedTest.id]}
+              onRun={() => onRunSuite(selectedTest)}
+              onCancel={() => onCancelSuite(selectedTest)}
+            />
+          )}
 
           <AddIntegrationTestModal
             open={addModalOpen}
