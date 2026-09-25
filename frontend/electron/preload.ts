@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
-import type { ImportedFile, RunEvent, RunRequest } from '../src/shared/lib/types.ts';
+import type {
+  EnvironmentEvent,
+  ImportedFile,
+  IntegrationEnvironment,
+  RunEvent,
+  RunRequest,
+} from '../src/shared/lib/types.ts';
 
 contextBridge.exposeInMainWorld('electron', {
   importFile: (): Promise<ImportedFile | null> =>
@@ -24,5 +30,23 @@ contextBridge.exposeInMainWorld('electron', {
     const handler = (_event: IpcRendererEvent, payload: RunEvent) => listener(payload);
     ipcRenderer.on('run:event', handler);
     return () => ipcRenderer.removeListener('run:event', handler);
+  },
+
+  importEnvironment: (): Promise<IntegrationEnvironment | null> =>
+    ipcRenderer.invoke('environment:import'),
+
+  environmentStart: (configPath: string): Promise<void> =>
+    ipcRenderer.invoke('environment:start', configPath),
+
+  environmentCancelStart: (): Promise<void> =>
+    ipcRenderer.invoke('environment:cancelStart'),
+
+  environmentStop: (configPath: string): Promise<void> =>
+    ipcRenderer.invoke('environment:stop', configPath),
+
+  onEnvironmentEvent: (listener: (event: EnvironmentEvent) => void): (() => void) => {
+    const handler = (_event: IpcRendererEvent, payload: EnvironmentEvent) => listener(payload);
+    ipcRenderer.on('environment:event', handler);
+    return () => ipcRenderer.removeListener('environment:event', handler);
   },
 });

@@ -3,6 +3,12 @@ import path from 'node:path';
 import { importFile } from './lib/importFile.ts';
 import { saveFile, saveFileAs } from './lib/saveFile.ts';
 import { runTest, stopTest } from './lib/runTest.ts';
+import {
+  cancelStart,
+  importEnvironment,
+  startEnvironment,
+  stopEnvironment,
+} from './lib/environment.ts';
 import type { RunRequest } from '../src/shared/lib/types.ts';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -27,6 +33,24 @@ ipcMain.handle('run:start', (event, request: RunRequest) =>
 );
 
 ipcMain.handle('run:stop', () => stopTest());
+
+ipcMain.handle('environment:import', (event) =>
+  importEnvironment(BrowserWindow.fromWebContents(event.sender))
+);
+
+ipcMain.handle('environment:start', (event, configPath: string) =>
+  startEnvironment(configPath, (envEvent) =>
+    event.sender.send('environment:event', envEvent)
+  )
+);
+
+ipcMain.handle('environment:cancelStart', () => cancelStart());
+
+ipcMain.handle('environment:stop', (event, configPath: string) =>
+  stopEnvironment(configPath, (envEvent) =>
+    event.sender.send('environment:event', envEvent)
+  )
+);
 
 app.on('before-quit', stopTest);
 

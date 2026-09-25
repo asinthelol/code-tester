@@ -1,4 +1,10 @@
-import type { ImportedFile, RunEvent, RunRequest } from './types';
+import type {
+  EnvironmentEvent,
+  ImportedFile,
+  IntegrationEnvironment,
+  RunEvent,
+  RunRequest,
+} from './types';
 
 declare global {
   interface Window {
@@ -12,6 +18,11 @@ declare global {
       runStart: (request: RunRequest) => Promise<void>;
       runStop: () => Promise<void>;
       onRunEvent: (listener: (event: RunEvent) => void) => () => void;
+      importEnvironment: () => Promise<IntegrationEnvironment | null>;
+      environmentStart: (configPath: string) => Promise<void>;
+      environmentCancelStart: () => Promise<void>;
+      environmentStop: (configPath: string) => Promise<void>;
+      onEnvironmentEvent: (listener: (event: EnvironmentEvent) => void) => () => void;
     };
   }
 }
