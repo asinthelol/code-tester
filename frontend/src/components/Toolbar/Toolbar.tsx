@@ -3,18 +3,20 @@ import Button from '../ui/Button/Button';
 import AddButton from './AddButton/AddButton';
 import AddTestModal from './AddTestModal/AddTestModal';
 import Breadcrumbs from './Breadcrumbs/Breadcrumbs';
-import type { ImportedFile } from '../../shared/lib/types';
+import type { ImportedFile, IntegrationEnvironment } from '../../shared/lib/types';
 
 interface ToolbarProps {
   activeSection: string;
   onImport: (file: ImportedFile) => void;
   onAddTest: (test: ImportedFile) => void;
+  onAddEnvironment: (environment: IntegrationEnvironment) => void;
 }
 
 const ADD_BUTTON_LABELS: Record<string, string> = {
   Files: 'Add File',
   Repos: 'Add Repo',
   Tests: 'Add Test',
+  Environments: 'Add Environment',
 };
 
 const BellIcon = () => (
@@ -28,7 +30,7 @@ const BellIcon = () => (
   </svg>
 );
 
-function Toolbar({ activeSection, onImport, onAddTest }: ToolbarProps) {
+function Toolbar({ activeSection, onImport, onAddTest, onAddEnvironment }: ToolbarProps) {
   const addButtonLabel = ADD_BUTTON_LABELS[activeSection];
   const [testModalOpen, setTestModalOpen] = useState(false);
 
@@ -44,6 +46,15 @@ function Toolbar({ activeSection, onImport, onAddTest }: ToolbarProps) {
       }
     } else if (activeSection === 'Tests') {
       setTestModalOpen(true);
+    } else if (activeSection === 'Environments') {
+      try {
+        const environment = await window.electron.importEnvironment();
+        if (environment) {
+          onAddEnvironment(environment);
+        }
+      } catch (error) {
+        console.error('Failed to import environment:', error);
+      }
     }
   };
 

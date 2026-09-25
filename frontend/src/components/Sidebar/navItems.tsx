@@ -37,6 +37,15 @@ const testsIcon = (
   </svg>
 );
 
+const environmentsIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+    <rect x="3.5" y="3.5" width="17" height="5.5" rx="1.5" />
+    <rect x="3.5" y="10.75" width="17" height="5.5" rx="1.5" />
+    <rect x="3.5" y="18" width="17" height="2.5" rx="1.25" />
+    <path strokeLinecap="round" d="M7 6.25h.01M7 13.5h.01" />
+  </svg>
+);
+
 const settingsIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
     <path
@@ -62,6 +71,7 @@ export const NAV_ITEMS: NavItem[] = [
   { title: 'Repos', icon: reposIcon },
   { title: 'Files', icon: filesIcon },
   { title: 'Tests', icon: testsIcon },
+  { title: 'Environments', icon: environmentsIcon },
 ];
 
 export const SETTINGS_ITEM: NavItem = { title: 'Settings', icon: settingsIcon };

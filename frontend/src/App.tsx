@@ -1,15 +1,22 @@
 import { useRef, useState } from 'react';
 import type { editor } from 'monaco-editor';
 import CodeEditor from './components/Editor/CodeEditor/CodeEditor';
+import EnvironmentDetail from './components/Environments/EnvironmentDetail/EnvironmentDetail';
 import Sidebar from './components/Sidebar/Sidebar';
 import DashboardPanel from './components/Sidebar/DashboardPanel/DashboardPanel';
+import EnvironmentsPanel from './components/Sidebar/EnvironmentsPanel/EnvironmentsPanel';
 import FilesPanel from './components/Sidebar/FilesPanel/FilesPanel';
 import ReposPanel from './components/Sidebar/ReposPanel/ReposPanel';
 import TestsPanel from './components/Sidebar/TestsPanel/TestsPanel';
 import SelectFunctionModal from './components/Tests/SelectFunctionModal/SelectFunctionModal';
 import RunOutputPanel from './components/Tests/RunOutputPanel/RunOutputPanel';
 import Toolbar from './components/Toolbar/Toolbar';
-import type { ImportedFile, TestItem, TestTarget } from './shared/lib/types';
+import type {
+  ImportedFile,
+  IntegrationEnvironment,
+  TestItem,
+  TestTarget,
+} from './shared/lib/types';
 
 function upsertByPath<T extends { path: string }>(list: T[], item: T) {
   const existingIndex = list.findIndex((f) => f.path === item.path);
@@ -30,6 +37,8 @@ function App() {
   const [activePath, setActivePath] = useState<string | null>(null);
   const [tests, setTests] = useState<TestItem[]>([]);
   const [activeTestPath, setActiveTestPath] = useState<string | null>(null);
+  const [environments, setEnvironments] = useState<IntegrationEnvironment[]>([]);
+  const [activeEnvironmentPath, setActiveEnvironmentPath] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState('Files');
   const [targetPickerFor, setTargetPickerFor] = useState<string | null>(null);
   const [runSetupError, setRunSetupError] = useState<string | null>(null);
@@ -43,6 +52,11 @@ function App() {
   const handleAddTest = (file: ImportedFile) => {
     setTests((prev) => upsertByPath(prev, { ...file, target: null }));
     setActiveTestPath(file.path);
+  };
+
+  const handleAddEnvironment = (environment: IntegrationEnvironment) => {
+    setEnvironments((prev) => upsertByPath(prev, environment));
+    setActiveEnvironmentPath(environment.path);
   };
 
   const handleSelectTarget = (target: TestTarget) => {
@@ -60,6 +74,8 @@ function App() {
 
   const activeFile = files.find((f) => f.path === activePath) ?? null;
   const activeTest = tests.find((t) => t.path === activeTestPath) ?? null;
+  const activeEnvironment =
+    environments.find((e) => e.path === activeEnvironmentPath) ?? null;
   const activeItem = activeSection === 'Tests' ? activeTest : activeFile;
 
   const getExtension = (filePath: string) => {
@@ -139,11 +155,31 @@ function App() {
           onConfigure={(test) => setTargetPickerFor(test.path)}
         />
       )}
+      {activeSection === 'Environments' && (
+        <EnvironmentsPanel
+          environments={environments}
+          activePath={activeEnvironmentPath}
+          onSelect={setActiveEnvironmentPath}
+        />
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Toolbar activeSection={activeSection} onImport={handleImport} onAddTest={handleAddTest} />
+        <Toolbar
+          activeSection={activeSection}
+          onImport={handleImport}
+          onAddTest={handleAddTest}
+          onAddEnvironment={handleAddEnvironment}
+        />
 
-        {activeItem ? (
+        {activeSection === 'Environments' ? (
+          activeEnvironment ? (
+            <EnvironmentDetail key={activeEnvironment.path} environment={activeEnvironment} />
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
+              Add an environment to get started
+            </div>
+          )
+        ) : activeItem ? (
           <>
             <div className="flex items-center justify-between border-b border-neutral-300 px-6 py-2 text-sm text-neutral-500 dark:border-neutral-700">
               <span className="truncate">{activeItem.path}</span>
