@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import type { Command, Event } from '../../../protocol/v1/typescript/index.ts';
+import { lineBuffered } from './ndjson.ts';
 
 
 
@@ -8,19 +9,6 @@ const CANCEL_GRACE_MS = 5_000;
 
 let attached: ChildProcess | null = null;
 let cancelTimer: NodeJS.Timeout | null = null;
-
-function lineBuffered(onLine: (line: string) => void) {
-  let buffer = '';
-  return (data: Buffer) => {
-    buffer += data.toString('utf-8');
-    let newlineIndex: number;
-    while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-      const line = buffer.slice(0, newlineIndex).replace(/\r$/, '');
-      buffer = buffer.slice(newlineIndex + 1);
-      if (line.trim()) onLine(line);
-    }
-  };
-}
 
 export function attachSupervisor(
   configPath: string,

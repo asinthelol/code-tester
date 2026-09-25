@@ -1,10 +1,10 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { emitEvent } from '../../protocol.ts';
-import { getContext } from './context.ts';
 import { defineTest, getRegistered, resetRegistry } from './suite.ts';
-import type { TestDefinition } from './suite.ts';
+import type { TestDefinition, WorkerContext } from './suite.ts';
 import type { NodeRunCommand } from '../../../../protocol/v1/typescript/index.ts';
 
 let cancelled = false;
@@ -23,7 +23,7 @@ async function importFresh(modulePath: string): Promise<void> {
 
   await fs.copyFile(modulePath, tempPath);
   try {
-    await import(tempPath);
+    await import(pathToFileURL(tempPath).href);
   } finally {
     await fs.rm(tempPath, { force: true });
   }
@@ -64,7 +64,11 @@ async function withCapturedConsole(
   }
 }
 
-export async function runNodeSuite(command: NodeRunCommand): Promise<void> {
+export async function runNodeSuite(
+  command: NodeRunCommand,
+  ctx: WorkerContext,
+  suiteRoot: string
+): Promise<void> {
   cancelled = false;
   resetRegistry();
   (globalThis as Record<string, unknown>).defineTest = defineTest;
@@ -73,7 +77,7 @@ export async function runNodeSuite(command: NodeRunCommand): Promise<void> {
   emitEvent({ protocolVersion: 1, runId, type: 'run.started' });
 
   try {
-    await importFresh(`/suite/${entryPoint}`);
+    await importFresh(path.join(suiteRoot, entryPoint));
   } catch (error) {
     emitEvent({
       protocolVersion: 1,
@@ -99,8 +103,6 @@ export async function runNodeSuite(command: NodeRunCommand): Promise<void> {
     suite: { id: crypto.randomUUID(), name: entryPoint },
     tests: discovered,
   });
-
-  const ctx = getContext();
 
   for (const test of tests) {
     if (cancelled) break;
