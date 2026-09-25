@@ -286,9 +286,9 @@ function App() {
       {activeSection === 'Tests' && (
         <TestsPanel
           tests={tests}
-          activePath={activeTestPath}
-          onSelect={setActiveTestPath}
-          onConfigure={(test) => setTargetPickerFor(test.path)}
+          activeId={activeTestId}
+          onSelect={setActiveTestId}
+          onConfigure={(test) => setTargetPickerFor(test.id)}
         />
       )}
       {activeSection === 'Environments' && (
@@ -333,14 +333,24 @@ function App() {
               Add an environment to get started
             </div>
           )
-        ) : activeItem ? (
+        ) : activeSection === 'Tests' ? (
+          activeTest ? (
+            <TestDetail
+              test={activeTest}
+              runSetupError={runSetupError}
+              onRun={handleRunTest}
+              onConfigureTarget={() => setTargetPickerFor(activeTest.id)}
+            />
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
+              Add a test to get started
+            </div>
+          )
+        ) : activeFile ? (
           <>
             <div className="flex items-center justify-between border-b border-neutral-300 px-6 py-2 text-sm text-neutral-500 dark:border-neutral-700">
-              <span className="truncate">{activeItem.path}</span>
+              <span className="truncate">{activeFile.path}</span>
               <div className="ml-4 flex shrink-0 items-center gap-2">
-                {activeSection === 'Tests' && runSetupError && (
-                  <span className="text-xs text-red-500">{runSetupError}</span>
-                )}
                 <button
                   type="button"
                   onClick={handleSave}
@@ -348,32 +358,20 @@ function App() {
                 >
                   Save
                 </button>
-                {activeSection === 'Tests' && (
-                  <button
-                    type="button"
-                    onClick={handleRunTest}
-                    className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-700 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
-                  >
-                    Run
-                  </button>
-                )}
               </div>
             </div>
             <div className="min-h-0 flex-1">
               <CodeEditor
-                path={activeItem.path}
-                value={activeItem.content}
+                path={activeFile.path}
+                value={activeFile.content}
                 editorRef={editorRef}
                 onSave={handleSave}
               />
             </div>
-            {activeSection === 'Tests' && <RunOutputPanel />}
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
-            {activeSection === 'Tests'
-              ? 'Add a test to get started'
-              : 'Import a file to get started'}
+            Import a file to get started
           </div>
         )}
       </div>
