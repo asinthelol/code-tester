@@ -51,3 +51,10 @@ export type EnvironmentEvent =
   | { type: 'environment.ready' }
   | { type: 'environment.failed'; reason: 'timeout' | 'error' | 'cancelled'; message?: string }
   | { type: 'environment.stopped' };
+
+export interface IntegrationTest {
+  id: string;
+  name: string;
+  environmentPath: string;
+  entryPoint: string;
+}
