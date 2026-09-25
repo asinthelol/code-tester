@@ -3,12 +3,13 @@ import Button from '../ui/Button/Button';
 import AddButton from './AddButton/AddButton';
 import AddTestModal from './AddTestModal/AddTestModal';
 import Breadcrumbs from './Breadcrumbs/Breadcrumbs';
-import type { ImportedFile, IntegrationEnvironment } from '../../shared/lib/types';
+import type { ImportedFile, IntegrationEnvironment, TestSpec } from '../../shared/lib/types';
 
 interface ToolbarProps {
   activeSection: string;
+  environments: IntegrationEnvironment[];
   onImport: (file: ImportedFile) => void;
-  onAddTest: (test: { name: string }) => void;
+  onAddTest: (test: { name: string; environmentPath: string | null; spec: TestSpec }) => void;
   onAddEnvironment: (environment: IntegrationEnvironment) => void;
 }
 
@@ -30,7 +31,7 @@ const BellIcon = () => (
   </svg>
 );
 
-function Toolbar({ activeSection, onImport, onAddTest, onAddEnvironment }: ToolbarProps) {
+function Toolbar({ activeSection, environments, onImport, onAddTest, onAddEnvironment }: ToolbarProps) {
   const addButtonLabel = ADD_BUTTON_LABELS[activeSection];
   const [testModalOpen, setTestModalOpen] = useState(false);
 
@@ -72,6 +73,7 @@ function Toolbar({ activeSection, onImport, onAddTest, onAddEnvironment }: Toolb
       <AddTestModal
         open={testModalOpen}
         onClose={() => setTestModalOpen(false)}
+        environments={environments}
         onAdd={onAddTest}
       />
     </div>
