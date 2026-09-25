@@ -1,12 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import AddIntegrationTestModal from '../AddIntegrationTestModal/AddIntegrationTestModal';
-import SuiteRunPanel from '../SuiteRunPanel/SuiteRunPanel';
-import type {
-  EnvironmentStatus,
-  IntegrationEnvironment,
-  IntegrationTest,
-  SuiteRun,
-} from '../../../shared/lib/types';
+import { useEffect, useRef } from 'react';
+import type { EnvironmentStatus, IntegrationEnvironment } from '../../../shared/lib/types';
 
 interface EnvironmentDetailProps {
   environment: IntegrationEnvironment;
@@ -14,13 +7,6 @@ interface EnvironmentDetailProps {
   log: string[];
   onStart: () => void;
   onStop: () => void;
-  integrationTests: IntegrationTest[];
-  onAddIntegrationTest: (test: { name: string; entryPoint: string }) => void;
-  selectedTestId: string | null;
-  onSelectTest: (id: string) => void;
-  suiteRuns: Record<string, SuiteRun>;
-  onRunSuite: (test: IntegrationTest) => void;
-  onCancelSuite: (test: IntegrationTest) => void;
 }
 
 const STATUS_LABEL: Record<EnvironmentStatus, string> = {
@@ -41,21 +27,7 @@ const STATUS_DOT: Record<EnvironmentStatus, string> = {
   stopped: 'bg-neutral-400',
 };
 
-function EnvironmentDetail({
-  environment,
-  status,
-  log,
-  onStart,
-  onStop,
-  integrationTests,
-  onAddIntegrationTest,
-  selectedTestId,
-  onSelectTest,
-  suiteRuns,
-  onRunSuite,
-  onCancelSuite,
-}: EnvironmentDetailProps) {
-  const [addModalOpen, setAddModalOpen] = useState(false);
+function EnvironmentDetail({ environment, status, log, onStart, onStop }: EnvironmentDetailProps) {
   const logRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -63,7 +35,6 @@ function EnvironmentDetail({
   }, [log]);
 
   const isBusy = status === 'starting' || status === 'stopping';
-  const selectedTest = integrationTests.find((test) => test.id === selectedTestId) ?? null;
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
@@ -99,66 +70,6 @@ function EnvironmentDetail({
           ))}
         </ul>
       </div>
-
-      {status === 'ready' && (
-        <>
-          <div className="border-b border-neutral-300 px-6 py-3 dark:border-neutral-700">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">
-                Integration Tests
-              </div>
-              <button
-                type="button"
-                onClick={() => setAddModalOpen(true)}
-                className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
-              >
-                Add
-              </button>
-            </div>
-
-            {integrationTests.length === 0 ? (
-              <p className="mt-2 text-sm text-neutral-500">No integration tests yet.</p>
-            ) : (
-              <ul className="mt-2 flex flex-col gap-1">
-                {integrationTests.map((test) => (
-                  <li key={test.id}>
-                    <button
-                      type="button"
-                      onClick={() => onSelectTest(test.id)}
-                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${
-                        test.id === selectedTestId
-                          ? 'bg-neutral-200 dark:bg-neutral-800'
-                          : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/50'
-                      }`}
-                    >
-                      <span className="text-neutral-900 dark:text-neutral-100">{test.name}</span>
-                      <span className="ml-2 font-mono text-xs text-neutral-500">
-                        {test.entryPoint}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {selectedTest && (
-            <SuiteRunPanel
-              testName={selectedTest.name}
-              entryPoint={selectedTest.entryPoint}
-              run={suiteRuns[selectedTest.id]}
-              onRun={() => onRunSuite(selectedTest)}
-              onCancel={() => onCancelSuite(selectedTest)}
-            />
-          )}
-
-          <AddIntegrationTestModal
-            open={addModalOpen}
-            onClose={() => setAddModalOpen(false)}
-            onAdd={onAddIntegrationTest}
-          />
-        </>
-      )}
 
       <div ref={logRef} className="min-h-0 flex-1 overflow-auto bg-[#171717] px-4 py-3 font-mono text-xs text-neutral-300">
         {log.length === 0 ? (
