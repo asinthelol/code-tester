@@ -47,6 +47,13 @@ export async function parseEnvironmentConfig(
   };
 }
 
+function friendlyDockerError(error: NodeJS.ErrnoException): string {
+  if (error.code === 'ENOENT') {
+    return 'Docker CLI not found. Is Docker Desktop installed and running?';
+  }
+  return error.message;
+}
+
 function lineBuffered(onLine: (line: string) => void) {
   let buffer = '';
   return (data: Buffer) => {
@@ -74,7 +81,12 @@ export async function startEnvironment(
   );
   activeUp = child;
 
-  const emitLine = lineBuffered((message) => onEvent({ type: 'compose.status', message }));
+  const recentLines: string[] = [];
+  const emitLine = lineBuffered((message) => {
+    recentLines.push(message);
+    if (recentLines.length > 5) recentLines.shift();
+    onEvent({ type: 'compose.status', message });
+  });
   child.stdout?.on('data', emitLine);
   child.stderr?.on('data', emitLine);
 
@@ -90,9 +102,12 @@ export async function startEnvironment(
     child.on('error', (error) => {
       if (settled) return;
       settled = true;
-      
       clearTimeout(timeout);
-      onEvent({ type: 'environment.failed', reason: 'error', message: error.message });
+      onEvent({
+        type: 'environment.failed',
+        reason: 'error',
+        message: friendlyDockerError(error),
+      });
       resolve();
     });
 
@@ -113,7 +128,7 @@ export async function startEnvironment(
         onEvent({
           type: 'environment.failed',
           reason: 'error',
-          message: `docker compose up exited with code ${exitCode}`,
+          message: recentLines.at(-1) ?? `docker compose up exited with code ${exitCode}`,
         });
       }
       resolve();
@@ -145,6 +160,9 @@ export async function stopEnvironment(
       onEvent?.({ type: 'environment.stopped' });
       resolve();
     });
-    child.on('error', () => resolve());
+    child.on('error', (error) => {
+      onEvent?.({ type: 'compose.status', message: friendlyDockerError(error) });
+      resolve();
+    });
   });
 }
