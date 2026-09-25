@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import AddIntegrationTestModal from '../AddIntegrationTestModal/AddIntegrationTestModal';
 import SuiteRunPanel from '../SuiteRunPanel/SuiteRunPanel';
-import type { EnvironmentEvent, IntegrationEnvironment } from '../../../shared/lib/types';
+import type {
+  EnvironmentEvent,
+  IntegrationEnvironment,
+  IntegrationTest,
+} from '../../../shared/lib/types';
 
 interface EnvironmentDetailProps {
   environment: IntegrationEnvironment;
+  integrationTests: IntegrationTest[];
+  onAddIntegrationTest: (test: { name: string; entryPoint: string }) => void;
 }
 
 type Status = 'idle' | 'starting' | 'ready' | 'failed' | 'stopping' | 'stopped';
@@ -26,9 +33,15 @@ const STATUS_DOT: Record<Status, string> = {
   stopped: 'bg-neutral-400',
 };
 
-function EnvironmentDetail({ environment }: EnvironmentDetailProps) {
+function EnvironmentDetail({
+  environment,
+  integrationTests,
+  onAddIntegrationTest,
+}: EnvironmentDetailProps) {
   const [status, setStatus] = useState<Status>('idle');
   const [log, setLog] = useState<string[]>([]);
+  const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const logRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -108,7 +121,66 @@ function EnvironmentDetail({ environment }: EnvironmentDetailProps) {
         </ul>
       </div>
 
-      {status === 'ready' && <SuiteRunPanel configPath={environment.path} />}
+      {status === 'ready' && (
+        <>
+          <div className="border-b border-neutral-300 px-6 py-3 dark:border-neutral-700">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">
+                Integration Tests
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddModalOpen(true)}
+                className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
+              >
+                Add
+              </button>
+            </div>
+
+            {integrationTests.length === 0 ? (
+              <p className="mt-2 text-sm text-neutral-500">No integration tests yet.</p>
+            ) : (
+              <ul className="mt-2 flex flex-col gap-1">
+                {integrationTests.map((test) => (
+                  <li key={test.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTestId(test.id)}
+                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm ${
+                        test.id === selectedTestId
+                          ? 'bg-neutral-200 dark:bg-neutral-800'
+                          : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/50'
+                      }`}
+                    >
+                      <span className="text-neutral-900 dark:text-neutral-100">{test.name}</span>
+                      <span className="ml-2 font-mono text-xs text-neutral-500">
+                        {test.entryPoint}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {integrationTests
+            .filter((test) => test.id === selectedTestId)
+            .map((test) => (
+              <SuiteRunPanel
+                key={test.id}
+                configPath={environment.path}
+                testName={test.name}
+                entryPoint={test.entryPoint}
+              />
+            ))}
+
+          <AddIntegrationTestModal
+            open={addModalOpen}
+            onClose={() => setAddModalOpen(false)}
+            onAdd={onAddIntegrationTest}
+          />
+        </>
+      )}
 
       <div ref={logRef} className="min-h-0 flex-1 overflow-auto bg-[#171717] px-4 py-3 font-mono text-xs text-neutral-300">
         {log.length === 0 ? (

@@ -3,6 +3,8 @@ import type { Event as SupervisorEvent } from '../../../../../protocol/v1/typesc
 
 interface SuiteRunPanelProps {
   configPath: string;
+  testName: string;
+  entryPoint: string;
 }
 
 type TestStatus = 'pending' | 'running' | 'passed' | 'failed' | 'errored';
@@ -24,8 +26,7 @@ const TEST_STATUS_DOT: Record<TestStatus, string> = {
   errored: 'bg-red-500',
 };
 
-function SuiteRunPanel({ configPath }: SuiteRunPanelProps) {
-  const [entryPoint, setEntryPoint] = useState('tests/index.ts');
+function SuiteRunPanel({ configPath, testName, entryPoint }: SuiteRunPanelProps) {
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<RunStatus>('idle');
   const [runFailedReason, setRunFailedReason] = useState<string | null>(null);
@@ -109,19 +110,11 @@ function SuiteRunPanel({ configPath }: SuiteRunPanelProps) {
 
   return (
     <div className="border-b border-neutral-300 px-6 py-3 dark:border-neutral-700">
-      <div className="text-xs font-semibold tracking-wide text-neutral-500 uppercase">
-        Run a suite
-      </div>
-
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          type="text"
-          value={entryPoint}
-          onChange={(event) => setEntryPoint(event.target.value)}
-          disabled={isRunning}
-          placeholder="tests/index.ts"
-          className="flex-1 rounded-md border border-neutral-300 px-2 py-1.5 font-mono text-sm text-neutral-900 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-        />
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{testName}</div>
+          <div className="font-mono text-xs text-neutral-500">{entryPoint}</div>
+        </div>
         <button
           type="button"
           onClick={isRunning ? handleCancel : handleRun}

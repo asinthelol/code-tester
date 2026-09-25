@@ -14,6 +14,7 @@ import Toolbar from './components/Toolbar/Toolbar';
 import type {
   ImportedFile,
   IntegrationEnvironment,
+  IntegrationTest,
   TestItem,
   TestTarget,
 } from './shared/lib/types';
@@ -39,6 +40,7 @@ function App() {
   const [activeTestPath, setActiveTestPath] = useState<string | null>(null);
   const [environments, setEnvironments] = useState<IntegrationEnvironment[]>([]);
   const [activeEnvironmentPath, setActiveEnvironmentPath] = useState<string | null>(null);
+  const [integrationTests, setIntegrationTests] = useState<IntegrationTest[]>([]);
   const [activeSection, setActiveSection] = useState('Files');
   const [targetPickerFor, setTargetPickerFor] = useState<string | null>(null);
   const [runSetupError, setRunSetupError] = useState<string | null>(null);
@@ -57,6 +59,19 @@ function App() {
   const handleAddEnvironment = (environment: IntegrationEnvironment) => {
     setEnvironments((prev) => upsertByPath(prev, environment));
     setActiveEnvironmentPath(environment.path);
+  };
+
+  const handleAddIntegrationTest = (test: { name: string; entryPoint: string }) => {
+    if (!activeEnvironmentPath) return;
+    setIntegrationTests((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name: test.name,
+        entryPoint: test.entryPoint,
+        environmentPath: activeEnvironmentPath,
+      },
+    ]);
   };
 
   const handleSelectTarget = (target: TestTarget) => {
@@ -173,7 +188,14 @@ function App() {
 
         {activeSection === 'Environments' ? (
           activeEnvironment ? (
-            <EnvironmentDetail key={activeEnvironment.path} environment={activeEnvironment} />
+            <EnvironmentDetail
+              key={activeEnvironment.path}
+              environment={activeEnvironment}
+              integrationTests={integrationTests.filter(
+                (t) => t.environmentPath === activeEnvironment.path
+              )}
+              onAddIntegrationTest={handleAddIntegrationTest}
+            />
           ) : (
             <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
               Add an environment to get started
