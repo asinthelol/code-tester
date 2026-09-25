@@ -1,7 +1,7 @@
 import { app, BrowserWindow, Menu, ipcMain } from 'electron';
 import path from 'node:path';
 import { importFile } from './lib/importFile.ts';
-import { saveFile, saveFileAs } from './lib/saveFile.ts';
+import { saveFile } from './lib/saveFile.ts';
 import { runTest, stopTest } from './lib/runTest.ts';
 import {
   cancelStart,
@@ -30,10 +30,6 @@ ipcMain.handle('file:import', (event) =>
 
 ipcMain.handle('file:save', (_event, filePath: string, content: string) =>
   saveFile(filePath, content)
-);
-
-ipcMain.handle('file:saveAs', (event, content: string, suggestedName: string) =>
-  saveFileAs(BrowserWindow.fromWebContents(event.sender), content, suggestedName)
 );
 
 ipcMain.handle('run:start', (event, request: RunRequest) =>
