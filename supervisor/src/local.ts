@@ -1,6 +1,7 @@
 import { emitEvent, readCommands } from './protocol.ts';
 import { cancelNodeRun, runNodeSuite } from './workers/node/run.ts';
-import type { NodeRunCommand } from '../../protocol/v1/typescript/index.ts';
+import { cancelPythonRun, runPythonSuite } from './workers/python/run.ts';
+import type { NodeRunCommand, PythonRunCommand } from '../../protocol/v1/typescript/index.ts';
 
 const suiteRoot = process.argv[2];
 if (!suiteRoot) {
@@ -15,6 +16,8 @@ function main(): void {
     if (command.type === 'run') {
       if (command.adapter === 'node') {
         void runNodeSuite(command as NodeRunCommand, {}, suiteRoot);
+      } else if (command.adapter === 'python') {
+        void runPythonSuite(command as PythonRunCommand, suiteRoot);
       } else {
         emitEvent({
           protocolVersion: 1,
@@ -25,6 +28,7 @@ function main(): void {
       }
     } else if (command.type === 'cancel') {
       cancelNodeRun();
+      cancelPythonRun();
     }
   });
 }
