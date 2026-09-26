@@ -51,6 +51,23 @@
         }
       ]
     },
+    "PythonRunCommand": {
+      "description": "The 'run' command's shape for adapter: \"python\".",
+      "allOf": [
+        { "$ref": "#/$defs/RunCommand" },
+        {
+          "type": "object",
+          "required": ["adapter", "entryPoint"],
+          "properties": {
+            "adapter": { "const": "python" },
+            "entryPoint": {
+              "type": "string",
+              "description": "Path to the suite's entry-point module, resolved relative to the worker's mounted suite root (/suite)."
+            }
+          }
+        }
+      ]
+    },
 
     "CancelCommand": {
       "allOf": [

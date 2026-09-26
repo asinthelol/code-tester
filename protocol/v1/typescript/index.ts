@@ -1,7 +1,9 @@
 /**
  * TypeScript mirror of protocol/v1/schema.json.
- * Plan to keep these in sync for now; generated bindings (this file, plus
- * eventual Java/C++ ones) are deferred until a second worker language needs one.
+ * Plan to keep these in sync for now; generated bindings are deferred until
+ * a third worker language needs one.
+ * C++ does NOT have a worker, it only does single-target functions.
+ * Python has a worker though!
  */
 
 export interface Envelope {
@@ -18,6 +20,11 @@ export interface RunCommand extends Envelope {
 
 export interface NodeRunCommand extends RunCommand {
   adapter: 'node';
+  entryPoint: string;
+}
+
+export interface PythonRunCommand extends RunCommand {
+  adapter: 'python';
   entryPoint: string;
 }
 
