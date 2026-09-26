@@ -38,6 +38,7 @@ declare global {
       onRepoScaffoldEvent: (listener: (event: RepoScaffoldEvent) => void) => () => void;
       loadState: () => Promise<PersistedState>;
       saveState: (state: PersistedState) => Promise<void>;
+      deleteFileFromDisk: (filePath: string) => Promise<void>;
     };
   }
 }

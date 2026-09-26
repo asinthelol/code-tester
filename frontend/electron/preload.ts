@@ -91,4 +91,7 @@ contextBridge.exposeInMainWorld('electron', {
   loadState: (): Promise<PersistedState> => ipcRenderer.invoke('state:load'),
 
   saveState: (state: PersistedState): Promise<void> => ipcRenderer.invoke('state:save', state),
+
+  deleteFileFromDisk: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke('fs:deleteFile', filePath),
 });
