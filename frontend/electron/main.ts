@@ -23,7 +23,10 @@ import {
   sendLocalCommand,
 } from './lib/localWorker.ts';
 import { synthesizeDockerTarget, synthesizeLocalTarget } from './lib/synthesizeTarget.ts';
-import type { RunRequest, TargetRunRequest } from '../src/shared/lib/types.ts';
+import { analyzeRepo } from './lib/repoAnalyzer.ts';
+import { pickRepoDirectory } from './lib/pickRepoDirectory.ts';
+import { cancelScaffold, scaffoldRepo } from './lib/scaffoldRepo.ts';
+import type { RunRequest, ScaffoldRequest, TargetRunRequest } from '../src/shared/lib/types.ts';
 import type { Event as SuiteEvent } from '../../protocol/v1/typescript/index.ts';
 
 function isTerminalSuiteEvent(event: SuiteEvent): boolean {
@@ -160,6 +163,18 @@ ipcMain.handle('suite:cancelLocal', (event, runId: string) =>
   })
 );
 
+ipcMain.handle('repo:pickDirectory', (event) =>
+  pickRepoDirectory(BrowserWindow.fromWebContents(event.sender))
+);
+
+ipcMain.handle('repo:analyze', (_event, repoPath: string) => analyzeRepo(repoPath));
+
+ipcMain.handle('repo:scaffold', (event, request: ScaffoldRequest) =>
+  scaffoldRepo(request, (scaffoldEvent) => event.sender.send('repo:scaffold:event', scaffoldEvent))
+);
+
+ipcMain.handle('repo:cancelScaffold', () => cancelScaffold());
+
 const STOP_ENVIRONMENTS_TIMEOUT_MS = 15_000;
 
 function withTimeout(promise: Promise<void>, ms: number): Promise<void> {
@@ -179,6 +194,7 @@ app.on('before-quit', (event) => {
   stopTest();
   detachSupervisor();
   detachLocalWorker();
+  cancelScaffold();
 
   const shutdowns = [...readyEnvironments].map((configPath) => stopEnvironment(configPath));
   readyEnvironments.clear();

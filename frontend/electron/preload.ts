@@ -4,8 +4,11 @@ import type {
   EnvironmentEvent,
   ImportedFile,
   IntegrationEnvironment,
+  RepoAnalysis,
+  RepoScaffoldEvent,
   RunEvent,
   RunRequest,
+  ScaffoldRequest,
   TargetRunRequest,
 } from '../src/shared/lib/types.ts';
 import type { Event as SupervisorEvent } from '../../protocol/v1/typescript/index.ts';
@@ -65,5 +68,22 @@ contextBridge.exposeInMainWorld('electron', {
     const handler = (_event: IpcRendererEvent, payload: SupervisorEvent) => listener(payload);
     ipcRenderer.on('supervisor:event', handler);
     return () => ipcRenderer.removeListener('supervisor:event', handler);
+  },
+
+  pickRepoDirectory: (): Promise<{ path: string; name: string } | null> =>
+    ipcRenderer.invoke('repo:pickDirectory'),
+
+  analyzeRepo: (repoPath: string): Promise<RepoAnalysis> =>
+    ipcRenderer.invoke('repo:analyze', repoPath),
+
+  scaffoldRepo: (request: ScaffoldRequest): Promise<IntegrationEnvironment> =>
+    ipcRenderer.invoke('repo:scaffold', request),
+
+  cancelScaffoldRepo: (): Promise<void> => ipcRenderer.invoke('repo:cancelScaffold'),
+
+  onRepoScaffoldEvent: (listener: (event: RepoScaffoldEvent) => void): (() => void) => {
+    const handler = (_event: IpcRendererEvent, payload: RepoScaffoldEvent) => listener(payload);
+    ipcRenderer.on('repo:scaffold:event', handler);
+    return () => ipcRenderer.removeListener('repo:scaffold:event', handler);
   },
 });
