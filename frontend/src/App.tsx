@@ -11,6 +11,7 @@ import TestsPanel from './components/Sidebar/TestsPanel/TestsPanel';
 import SelectFunctionModal from './components/Tests/SelectFunctionModal/SelectFunctionModal';
 import TestDetail from './components/Tests/TestDetail/TestDetail';
 import Toolbar from './components/Toolbar/Toolbar';
+import { getExtension } from './shared/lib/path';
 import type {
   EnvironmentStatus,
   ImportedFile,
@@ -222,17 +223,22 @@ function App() {
       ? environmentStatus
       : 'idle';
 
-  const getExtension = (filePath: string) => {
-    const match = /\.([^./\\]+)$/.exec(filePath);
-    return match ? match[1].toLowerCase() : '';
-  };
-
   const handleSave = async () => {
     if (!editorRef.current || !activeFile) return;
     const content = editorRef.current.getValue();
     await window.electron.saveFile(activeFile.path, content);
     const updated: ImportedFile = { ...activeFile, content };
     setFiles((prev) => replaceByPath(prev, activeFile.path, updated));
+  };
+
+  const startSuiteRun = (testId: string) => {
+    const runId = crypto.randomUUID();
+    runIdToTestId.current[runId] = testId;
+    setSuiteRuns((prev) => ({
+      ...prev,
+      [testId]: { runId, status: 'running', failedReason: null, testOrder: [], tests: {} },
+    }));
+    return runId;
   };
 
   const handleRunTest = async () => {
@@ -250,32 +256,51 @@ function App() {
         setRunSetupError('Target file is no longer available. Configure a new target.');
         return;
       }
-
       setRunSetupError(null);
-      await window.electron.runStart({
+
+      const extension = getExtension(targetFile.path);
+      if (extension === 'py') {
+        await window.electron.runStart({
+          sourceContent: targetFile.content,
+          sourceExtension: extension,
+          functionName: target.functionName,
+          argsJson: target.argsJson,
+          expectedJson: target.expectedJson,
+        });
+        return;
+      }
+
+      const runId = startSuiteRun(activeTest.id);
+      await window.electron.runTargetSuite({
+        runId,
+        testName: activeTest.name,
+        target,
         sourceContent: targetFile.content,
-        sourceExtension: getExtension(targetFile.path),
-        functionName: target.functionName,
-        argsJson: target.argsJson,
-        expectedJson: target.expectedJson,
+        extension,
+        environmentPath: activeTest.environmentPath,
       });
       return;
     }
 
-    const runId = crypto.randomUUID();
-    runIdToTestId.current[runId] = activeTest.id;
-    setSuiteRuns((prev) => ({
-      ...prev,
-      [activeTest.id]: { runId, status: 'running', failedReason: null, testOrder: [], tests: {} },
-    }));
-    await window.electron.supervisorExecute(runId, activeTest.spec.entryPoint);
+    setRunSetupError(null);
+    const runId = startSuiteRun(activeTest.id);
+    if (activeTest.environmentPath) {
+      await window.electron.supervisorExecute(runId, activeTest.spec.entryPoint);
+    } else {
+      await window.electron.runLocalSuite(runId, activeTest.spec.entryPoint);
+    }
   };
 
   const handleCancelTest = async () => {
-    if (!activeTest || activeTest.spec.kind !== 'entryPoint' || !activeTest.environmentPath) return;
+    if (!activeTest) return;
     const run = suiteRuns[activeTest.id];
     if (!run) return;
-    await window.electron.supervisorCancel(run.runId, activeTest.environmentPath);
+
+    if (activeTest.environmentPath) {
+      await window.electron.supervisorCancel(run.runId, activeTest.environmentPath);
+    } else {
+      await window.electron.cancelLocalSuite(run.runId);
+    }
   };
 
   return (
