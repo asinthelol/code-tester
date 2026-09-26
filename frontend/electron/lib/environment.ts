@@ -2,9 +2,11 @@ import { dialog } from 'electron';
 import type { BrowserWindow, OpenDialogOptions } from 'electron';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import fs from 'node:fs/promises';
-import { parse } from 'yaml';
 import type { EnvironmentEvent, IntegrationEnvironment } from '../../src/shared/lib/types.ts';
+import { lineBuffered } from './ndjson.ts';
+import { parseEnvironmentConfig } from './parseEnvironmentConfig.ts';
+
+export { parseEnvironmentConfig };
 
 
 
@@ -34,39 +36,11 @@ export async function importEnvironment(
   return parseEnvironmentConfig(filePaths[0]);
 }
 
-export async function parseEnvironmentConfig(
-  configPath: string
-): Promise<IntegrationEnvironment> {
-  const content = await fs.readFile(configPath, 'utf-8');
-  const parsed = parse(content) as { name?: string; services?: Record<string, unknown> };
-
-  return {
-    path: configPath,
-    name: parsed.name ?? configPath,
-    services: Object.keys(parsed.services ?? {}),
-  };
-}
-
 function friendlyDockerError(error: NodeJS.ErrnoException): string {
   if (error.code === 'ENOENT') {
     return 'Docker CLI not found. Is Docker Desktop installed and running?';
   }
   return error.message;
-}
-
-function lineBuffered(onLine: (line: string) => void) {
-  let buffer = '';
-  return (data: Buffer) => {
-
-    buffer += data.toString('utf-8');
-    let newlineIndex: number;
-    while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-      
-      const line = buffer.slice(0, newlineIndex).replace(/\r$/, '');
-      buffer = buffer.slice(newlineIndex + 1);
-      if (line.trim()) onLine(line);
-    }
-  };
 }
 
 export async function startEnvironment(

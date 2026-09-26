@@ -62,6 +62,63 @@ export interface IntegrationEnvironment {
   services: string[];
 }
 
+export interface Repo {
+  path: string;
+  name: string;
+  environmentPath: string | null;
+}
+
+export type BackingServiceType = 'postgres' | 'redis' | 'mysql' | 'mongodb';
+
+export interface DetectedService {
+  name: string;
+  relativePath: string;
+  buildStrategy: 'dockerfile' | 'buildpacks';
+  // Only meaningful when buildStrategy is 'dockerfile'. 'repoRoot' when the
+  // Dockerfile's own COPY/ADD sources reference paths prefixed with the
+  // service's own directory name (e.g. `COPY backend/requirements.txt`),
+  // which only resolves correctly if the build context is the repo root,
+  // not the service's own directory.
+  buildContext: 'own' | 'repoRoot';
+}
+
+export interface BackingServiceSource {
+  service: string;
+  envVarName?: string;
+  // Overrides the connection string's URL when needed
+  // (e.g. SQLAlchemy + pymysql needs "mysql+pymysql://")
+  // Undefined defaults to the usual "mysql://" which is fine for other languages
+  scheme?: string;
+}
+
+export interface BackingServiceSuggestion {
+  type: BackingServiceType;
+  autoWireable: boolean;
+  detectedVia: string;
+  sources: BackingServiceSource[];
+  confirmed: boolean;
+}
+
+export interface RepoAnalysis {
+  repoPath: string;
+  repoName: string;
+  services: DetectedService[];
+  backingServices: BackingServiceSuggestion[];
+}
+
+export interface ScaffoldRequest {
+  repoPath: string;
+  repoName: string;
+  services: DetectedService[];
+  backingServices: BackingServiceSuggestion[];
+}
+
+export type RepoScaffoldEvent =
+  | { type: 'scaffold.status'; message: string }
+  | { type: 'scaffold.buildpacks.status'; service: string; message: string }
+  | { type: 'scaffold.completed'; environment: IntegrationEnvironment }
+  | { type: 'scaffold.failed'; message: string };
+
 export type EnvironmentEvent =
   | { type: 'compose.status'; message: string }
   | { type: 'environment.ready' }

@@ -2,8 +2,11 @@ import type {
   EnvironmentEvent,
   ImportedFile,
   IntegrationEnvironment,
+  RepoAnalysis,
+  RepoScaffoldEvent,
   RunEvent,
   RunRequest,
+  ScaffoldRequest,
   TargetRunRequest,
 } from './types';
 import type { Event as SupervisorEvent } from '../../../../protocol/v1/typescript/index.ts';
@@ -27,6 +30,11 @@ declare global {
       runLocalSuite: (runId: string, entryPoint: string) => Promise<void>;
       cancelLocalSuite: (runId: string) => Promise<void>;
       onSupervisorEvent: (listener: (event: SupervisorEvent) => void) => () => void;
+      pickRepoDirectory: () => Promise<{ path: string; name: string } | null>;
+      analyzeRepo: (repoPath: string) => Promise<RepoAnalysis>;
+      scaffoldRepo: (request: ScaffoldRequest) => Promise<IntegrationEnvironment>;
+      cancelScaffoldRepo: () => Promise<void>;
+      onRepoScaffoldEvent: (listener: (event: RepoScaffoldEvent) => void) => () => void;
     };
   }
 }
