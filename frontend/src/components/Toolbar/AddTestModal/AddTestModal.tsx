@@ -98,7 +98,8 @@ function AddTestModal({ open, onClose, environments, onAdd }: AddTestModalProps)
               className="rounded-md border border-neutral-300 px-2 py-1.5 font-mono text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
             <span className="text-xs text-neutral-500">
-              Path to the suite module, resolved relative to the suite root.
+              Resolved relative to the environment's suite root, or an absolute path when
+              running locally.
             </span>
           </label>
         )}
