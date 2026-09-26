@@ -27,6 +27,7 @@ import { analyzeRepo } from './lib/repoAnalyzer.ts';
 import { pickRepoDirectory } from './lib/pickRepoDirectory.ts';
 import { cancelScaffold, scaffoldRepo } from './lib/scaffoldRepo.ts';
 import { loadState, saveState } from './lib/appState.ts';
+import { deleteFileFromDisk } from './lib/deleteFile.ts';
 import type {
   PersistedState,
   RunRequest,
@@ -184,6 +185,8 @@ ipcMain.handle('repo:cancelScaffold', () => cancelScaffold());
 ipcMain.handle('state:load', () => loadState());
 
 ipcMain.handle('state:save', (_event, state: PersistedState) => saveState(state));
+
+ipcMain.handle('fs:deleteFile', (_event, filePath: string) => deleteFileFromDisk(filePath));
 
 const STOP_ENVIRONMENTS_TIMEOUT_MS = 15_000;
 

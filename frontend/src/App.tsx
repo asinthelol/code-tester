@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { editor } from 'monaco-editor';
 import CodeEditor from './components/Editor/CodeEditor/CodeEditor';
+import ConfirmDeleteModal from './components/ui/ConfirmDeleteModal/ConfirmDeleteModal';
 import EnvironmentDetail from './components/Environments/EnvironmentDetail/EnvironmentDetail';
 import Sidebar from './components/Sidebar/Sidebar';
 import EnvironmentsPanel from './components/Sidebar/EnvironmentsPanel/EnvironmentsPanel';
@@ -35,6 +36,12 @@ function replaceByPath<T extends { path: string }>(list: T[], oldPath: string, u
   return list.map((item) => (item.path === oldPath ? updated : item));
 }
 
+type PendingDelete =
+  | { kind: 'file'; item: ImportedFile }
+  | { kind: 'test'; item: Test }
+  | { kind: 'environment'; item: IntegrationEnvironment }
+  | { kind: 'repo'; item: Repo };
+
 function App() {
   const [files, setFiles] = useState<ImportedFile[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -44,6 +51,7 @@ function App() {
   const [activeEnvironmentPath, setActiveEnvironmentPath] = useState<string | null>(null);
   const [repos, setRepos] = useState<Repo[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [activeSection, setActiveSection] = useState('Files');
   const [targetPickerFor, setTargetPickerFor] = useState<string | null>(null);
   const [runSetupError, setRunSetupError] = useState<string | null>(null);
@@ -229,6 +237,67 @@ function App() {
     setActiveSection('Environments');
   };
 
+  const handleDeleteFile = async (file: ImportedFile, deleteFromDisk: boolean) => {
+    if (deleteFromDisk) await window.electron.deleteFileFromDisk(file.path);
+    setFiles((prev) => prev.filter((f) => f.path !== file.path));
+    if (activePath === file.path) setActivePath(null);
+  };
+
+  const handleDeleteTest = (test: Test) => {
+    setTests((prev) => prev.filter((t) => t.id !== test.id));
+    setSuiteRuns((prev) => {
+      if (!(test.id in prev)) return prev;
+      const next = { ...prev };
+      delete next[test.id];
+      return next;
+    });
+    if (activeTestId === test.id) setActiveTestId(null);
+  };
+
+  // Deleting an environment also detaches any test pointing at it (falls
+  // back to local execution) rather than deleting those tests too.
+  const handleDeleteEnvironment = async (environment: IntegrationEnvironment, deleteFromDisk: boolean) => {
+    if (environment.path === runningEnvironmentPath) {
+      await handleStopEnvironment(environment.path);
+    }
+    if (deleteFromDisk) await window.electron.deleteFileFromDisk(environment.path);
+    setEnvironments((prev) => prev.filter((e) => e.path !== environment.path));
+    setTests((prev) =>
+      prev.map((t) => (t.environmentPath === environment.path ? { ...t, environmentPath: null } : t))
+    );
+    if (activeEnvironmentPath === environment.path) setActiveEnvironmentPath(null);
+  };
+
+  // "delete from disk" here only ever reaches the
+  // environment the wizard generated for it (see handleDeleteEnvironment),
+  // never the repo directory itself.
+  const handleDeleteRepo = async (repo: Repo, deleteFromDisk: boolean) => {
+    const linkedEnvironment = environments.find((e) => e.path === repo.environmentPath);
+    if (linkedEnvironment) {
+      await handleDeleteEnvironment(linkedEnvironment, deleteFromDisk);
+    }
+    setRepos((prev) => prev.filter((r) => r.path !== repo.path));
+  };
+
+  const handleConfirmDelete = async (deleteFromDisk: boolean) => {
+    if (!pendingDelete) return;
+    switch (pendingDelete.kind) {
+      case 'file':
+        await handleDeleteFile(pendingDelete.item, deleteFromDisk);
+        break;
+      case 'test':
+        handleDeleteTest(pendingDelete.item);
+        break;
+      case 'environment':
+        await handleDeleteEnvironment(pendingDelete.item, deleteFromDisk);
+        break;
+      case 'repo':
+        await handleDeleteRepo(pendingDelete.item, deleteFromDisk);
+        break;
+    }
+    setPendingDelete(null);
+  };
+
   const handleSelectTarget = (target: TestTarget) => {
     if (!targetPickerFor) return;
     setTests((prev) =>
@@ -351,10 +420,16 @@ function App() {
           repos={repos}
           activePath={repos.find((r) => r.environmentPath === activeEnvironmentPath)?.path ?? null}
           onSelect={handleSelectRepo}
+          onDelete={(repo) => setPendingDelete({ kind: 'repo', item: repo })}
         />
       )}
       {activeSection === 'Files' && (
-        <FilesPanel files={files} activePath={activePath} onSelect={setActivePath} />
+        <FilesPanel
+          files={files}
+          activePath={activePath}
+          onSelect={setActivePath}
+          onDelete={(file) => setPendingDelete({ kind: 'file', item: file })}
+        />
       )}
       {activeSection === 'Tests' && (
         <TestsPanel
@@ -363,6 +438,7 @@ function App() {
           activeId={activeTestId}
           onSelect={setActiveTestId}
           onConfigure={(test) => setTargetPickerFor(test.id)}
+          onDelete={(test) => setPendingDelete({ kind: 'test', item: test })}
         />
       )}
       {activeSection === 'Environments' && (
@@ -370,6 +446,7 @@ function App() {
           environments={environments}
           activePath={activeEnvironmentPath}
           onSelect={setActiveEnvironmentPath}
+          onDelete={(environment) => setPendingDelete({ kind: 'environment', item: environment })}
         />
       )}
 
@@ -456,6 +533,22 @@ function App() {
         files={files}
         onSelect={handleSelectTarget}
         onCreateNew={handleCreateNewFunction}
+      />
+
+      <ConfirmDeleteModal
+        open={pendingDelete !== null}
+        itemLabel={pendingDelete?.item.name ?? ''}
+        diskDescription={
+          pendingDelete?.kind === 'file'
+            ? 'this file'
+            : pendingDelete?.kind === 'environment'
+              ? 'its docker-compose.yml'
+              : pendingDelete?.kind === 'repo'
+                ? 'the generated docker-compose.yml'
+                : undefined
+        }
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );
