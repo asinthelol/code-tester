@@ -8,6 +8,7 @@
     "typecheck": "tsc -b",
     "build": "node build.mjs",
     "build:local": "node build-local.mjs",
+    "build:image": "npm run build && docker build -t code-tester-supervisor:v1 -t code-tester-supervisor:latest .",
     "start": "node dist/index.js"
   },
   "devDependencies": {
