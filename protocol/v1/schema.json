@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://code-tester.local/protocol/v1/schema.json",
+  "title": "Code Tester integration-testing protocol v1",
+  "description": "Wire protocol between Electron/Supervisor and a language worker. Every message is one line of JSON. Commands flow Electron/Supervisor -> worker; Events flow worker -> Supervisor -> Electron.",
+  "$defs": {
+    "Envelope": {
+      "type": "object",
+      "required": ["protocolVersion", "runId", "type"],
+      "properties": {
+        "protocolVersion": { "const": 1 },
+        "runId": {
+          "type": "string",
+          "description": "Correlates every message to one run. Commands and events referring to the same run share this id."
+        },
+        "type": { "type": "string" }
+      }
+    },
+
+    "RunCommand": {
+      "description": "Start (or restart) a run. `adapter` selects which worker/language handles it; every field besides the envelope and `adapter` is adapter-specific.",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type", "adapter"],
+          "properties": {
+            "type": { "const": "run" },
+            "adapter": {
+              "type": "string",
+              "description": "e.g. \"node\". Determines which adapter-specific fields apply."
+            }
+          }
+        }
+      ]
+    },
+    "NodeRunCommand": {
+      "description": "The 'run' command's shape for adapter: \"node\".",
+      "allOf": [
+        { "$ref": "#/$defs/RunCommand" },
+        {
+          "type": "object",
+          "required": ["adapter", "entryPoint"],
+          "properties": {
+            "adapter": { "const": "node" },
+            "entryPoint": {
+              "type": "string",
+              "description": "Path to the suite's entry-point module, resolved relative to the worker's mounted suite root (/suite)."
+            }
+          }
+        }
+      ]
+    },
+
+    "CancelCommand": {
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "cancel" }
+          }
+        }
+      ]
+    },
+
+    "Command": {
+      "oneOf": [
+        { "$ref": "#/$defs/RunCommand" },
+        { "$ref": "#/$defs/CancelCommand" }
+      ]
+    },
+
+    "ReadyEvent": {
+      "description": "Worker process is up and listening for commands. Says nothing about environment/infra readiness (Postgres/Redis/etc.) for that's a docker problem.",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "ready" } }
+        }
+      ]
+    },
+
+    "RunStartedEvent": {
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "run.started" } }
+        }
+      ]
+    },
+
+    "SuiteDiscoveredEvent": {
+      "description": "Emitted once the entry-point module has been loaded and evaluated, before any test executes. `tests` is identity/metadata only.",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type", "suite", "tests"],
+          "properties": {
+            "type": { "const": "suite.discovered" },
+            "suite": {
+              "type": "object",
+              "required": ["id", "name"],
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" }
+              }
+            },
+            "tests": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "name"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "name": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+
+    "TestStartedEvent": {
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type", "testId"],
+          "properties": {
+            "type": { "const": "test.started" },
+            "testId": { "type": "string" }
+          }
+        }
+      ]
+    },
+
+    "TestStdoutEvent": {
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type", "testId", "chunk"],
+          "properties": {
+            "type": { "const": "test.stdout" },
+            "testId": { "type": "string" },
+            "chunk": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "TestStderrEvent": {
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type", "testId", "chunk"],
+          "properties": {
+            "type": { "const": "test.stderr" },
+            "testId": { "type": "string" },
+            "chunk": { "type": "string" }
+          }
+        }
+      ]
+    },
+
+    "TestFinishedEvent": {
+      "description": "Terminal event for one test. `metadata` is where adapter-specific detail lives (e.g. a Node adapter's per-assertion actual/expected list, or a JUnit adapter's stack trace).",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type", "testId", "status", "durationMs"],
+          "properties": {
+            "type": { "const": "test.finished" },
+            "testId": { "type": "string" },
+            "status": { "enum": ["passed", "failed", "errored"] },
+            "durationMs": { "type": "number", "minimum": 0 },
+            "error": {
+              "type": "string",
+              "description": "Present when status is \"errored\" (the test's own code threw). Distinct from \"failed\", where an assertion ran and reported a mismatch."
+            },
+            "metadata": {
+              "type": "object",
+              "description": "Open, adapter-defined extension bag."
+            }
+          }
+        }
+      ]
+    },
+
+    "RunCompletedEvent": {
+      "description": "The run finished executing. Individual tests may still have failed, so check each test.finished.status.",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "run.completed" } }
+        }
+      ]
+    },
+    "RunFailedEvent": {
+      "description": "The run itself could not execute (e.g. the suite module threw during discovery).",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type", "reason"],
+          "properties": {
+            "type": { "const": "run.failed" },
+            "reason": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "RunAbortedEvent": {
+      "description": "User cancellation completed gracefully.",
+      "allOf": [
+        { "$ref": "#/$defs/Envelope" },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "run.aborted" } }
+        }
+      ]
+    },
+
+    "Event": {
+      "oneOf": [
+        { "$ref": "#/$defs/ReadyEvent" },
+        { "$ref": "#/$defs/RunStartedEvent" },
+        { "$ref": "#/$defs/SuiteDiscoveredEvent" },
+        { "$ref": "#/$defs/TestStartedEvent" },
+        { "$ref": "#/$defs/TestStdoutEvent" },
+        { "$ref": "#/$defs/TestStderrEvent" },
+        { "$ref": "#/$defs/TestFinishedEvent" },
+        { "$ref": "#/$defs/RunCompletedEvent" },
+        { "$ref": "#/$defs/RunFailedEvent" },
+        { "$ref": "#/$defs/RunAbortedEvent" }
+      ]
+    },
+
+    "Message": {
+      "oneOf": [
+        { "$ref": "#/$defs/Command" },
+        { "$ref": "#/$defs/Event" }
+      ]
+    }
+  },
+
+  "$ref": "#/$defs/Message"
+}

@@ -1,17 +1,23 @@
+import { useState } from 'react';
 import Button from '../ui/Button/Button';
 import AddButton from './AddButton/AddButton';
+import AddTestModal from './AddTestModal/AddTestModal';
 import Breadcrumbs from './Breadcrumbs/Breadcrumbs';
-import type { ImportedFile } from '../../shared/lib/types';
+import type { ImportedFile, IntegrationEnvironment, TestSpec } from '../../shared/lib/types';
 
 interface ToolbarProps {
   activeSection: string;
+  environments: IntegrationEnvironment[];
   onImport: (file: ImportedFile) => void;
+  onAddTest: (test: { name: string; environmentPath: string | null; spec: TestSpec }) => void;
+  onAddEnvironment: (environment: IntegrationEnvironment) => void;
 }
 
 const ADD_BUTTON_LABELS: Record<string, string> = {
   Files: 'Add File',
   Repos: 'Add Repo',
   Tests: 'Add Test',
+  Environments: 'Add Environment',
 };
 
 const BellIcon = () => (
@@ -25,8 +31,9 @@ const BellIcon = () => (
   </svg>
 );
 
-function Toolbar({ activeSection, onImport }: ToolbarProps) {
+function Toolbar({ activeSection, environments, onImport, onAddTest, onAddEnvironment }: ToolbarProps) {
   const addButtonLabel = ADD_BUTTON_LABELS[activeSection];
+  const [testModalOpen, setTestModalOpen] = useState(false);
 
   const handleAdd = async () => {
     if (activeSection === 'Files') {
@@ -38,11 +45,22 @@ function Toolbar({ activeSection, onImport }: ToolbarProps) {
       } catch (error) {
         console.error('Failed to import file:', error);
       }
+    } else if (activeSection === 'Tests') {
+      setTestModalOpen(true);
+    } else if (activeSection === 'Environments') {
+      try {
+        const environment = await window.electron.importEnvironment();
+        if (environment) {
+          onAddEnvironment(environment);
+        }
+      } catch (error) {
+        console.error('Failed to import environment:', error);
+      }
     }
   };
 
   return (
-    <div className="grid h-14 grid-cols-[7fr_3fr] items-center border-b border-neutral-300 px-6 dark:border-neutral-700">
+    <div className="grid h-14 grid-cols-[5fr_5fr] items-center border-b border-neutral-300 px-6 dark:border-neutral-700">
       <Breadcrumbs items={[activeSection]} />
 
       <div className="flex items-center justify-end gap-8">
@@ -51,6 +69,13 @@ function Toolbar({ activeSection, onImport }: ToolbarProps) {
           <BellIcon />
         </Button>
       </div>
+
+      <AddTestModal
+        open={testModalOpen}
+        onClose={() => setTestModalOpen(false)}
+        environments={environments}
+        onAdd={onAddTest}
+      />
     </div>
   );
 }
