@@ -15,7 +15,30 @@ import {
   detachSupervisor,
   executeSuite,
 } from './lib/supervisor.ts';
-import type { RunRequest } from '../src/shared/lib/types.ts';
+import {
+  attachLocalWorker,
+  cancelLocalSuite,
+  clearLocalCancelGrace,
+  detachLocalWorker,
+  sendLocalCommand,
+} from './lib/localWorker.ts';
+import { synthesizeDockerTarget, synthesizeLocalTarget } from './lib/synthesizeTarget.ts';
+import type { RunRequest, TargetRunRequest } from '../src/shared/lib/types.ts';
+import type { Event as SuiteEvent } from '../../protocol/v1/typescript/index.ts';
+
+function isTerminalSuiteEvent(event: SuiteEvent): boolean {
+  return event.type === 'run.completed' || event.type === 'run.failed' || event.type === 'run.aborted';
+}
+
+const pendingCleanups = new Map<string, () => Promise<void>>();
+
+function runPendingCleanup(runId: string): void {
+  const cleanup = pendingCleanups.get(runId);
+  if (cleanup) {
+    pendingCleanups.delete(runId);
+    void cleanup();
+  }
+}
 
 
 
@@ -46,9 +69,12 @@ ipcMain.handle('environment:start', (event, configPath: string) =>
   startEnvironment(configPath, (envEvent) => {
     event.sender.send('environment:event', envEvent);
     if (envEvent.type === 'environment.ready') {
-      attachSupervisor(configPath, (supervisorEvent) =>
-        event.sender.send('supervisor:event', supervisorEvent)
-      );
+      attachSupervisor(configPath, (supervisorEvent) => {
+        event.sender.send('supervisor:event', supervisorEvent);
+        if (isTerminalSuiteEvent(supervisorEvent)) {
+          runPendingCleanup(supervisorEvent.runId);
+        }
+      });
     }
   })
 );
@@ -74,12 +100,64 @@ ipcMain.handle('supervisor:cancel', (event, runId: string, configPath: string) =
       runId,
       type: 'run.aborted',
     });
+    runPendingCleanup(runId);
+  })
+);
+
+ipcMain.handle('suite:runTarget', async (event, request: TargetRunRequest) => {
+  const { runId, testName, target, sourceContent, extension, environmentPath } = request;
+
+  if (environmentPath) {
+    const synthesized = await synthesizeDockerTarget(
+      sourceContent,
+      testName,
+      target,
+      extension,
+      environmentPath
+    );
+    pendingCleanups.set(runId, synthesized.cleanup);
+    executeSuite(runId, synthesized.entryPoint);
+    return;
+  }
+
+  const synthesized = await synthesizeLocalTarget(sourceContent, testName, target, extension);
+  attachLocalWorker(synthesized.suiteRoot, (workerEvent) => {
+    event.sender.send('supervisor:event', workerEvent);
+    if (isTerminalSuiteEvent(workerEvent)) {
+      clearLocalCancelGrace();
+      detachLocalWorker();
+      void synthesized.cleanup();
+    }
+  });
+  sendLocalCommand({ protocolVersion: 1, runId, type: 'run', adapter: 'node', entryPoint: synthesized.entryPoint });
+});
+
+ipcMain.handle('suite:runLocal', (event, runId: string, entryPoint: string) => {
+  attachLocalWorker(process.cwd(), (workerEvent) => {
+    event.sender.send('supervisor:event', workerEvent);
+    if (isTerminalSuiteEvent(workerEvent)) {
+      clearLocalCancelGrace();
+      detachLocalWorker();
+    }
+  });
+  sendLocalCommand({ protocolVersion: 1, runId, type: 'run', adapter: 'node', entryPoint });
+});
+
+ipcMain.handle('suite:cancelLocal', (event, runId: string) =>
+  cancelLocalSuite(runId, () => {
+    console.warn(`Local worker did not acknowledge cancel for run ${runId}; force-killed.`);
+    event.sender.send('supervisor:event', {
+      protocolVersion: 1,
+      runId,
+      type: 'run.aborted',
+    });
   })
 );
 
 app.on('before-quit', () => {
   stopTest();
   detachSupervisor();
+  detachLocalWorker();
 });
 
 const createWindow = () => {
