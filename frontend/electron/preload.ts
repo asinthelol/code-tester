@@ -6,6 +6,7 @@ import type {
   IntegrationEnvironment,
   RunEvent,
   RunRequest,
+  TargetRunRequest,
 } from '../src/shared/lib/types.ts';
 import type { Event as SupervisorEvent } from '../../protocol/v1/typescript/index.ts';
 
@@ -50,6 +51,15 @@ contextBridge.exposeInMainWorld('electron', {
 
   supervisorCancel: (runId: string, configPath: string): Promise<void> =>
     ipcRenderer.invoke('supervisor:cancel', runId, configPath),
+
+  runTargetSuite: (request: TargetRunRequest): Promise<void> =>
+    ipcRenderer.invoke('suite:runTarget', request),
+
+  runLocalSuite: (runId: string, entryPoint: string): Promise<void> =>
+    ipcRenderer.invoke('suite:runLocal', runId, entryPoint),
+
+  cancelLocalSuite: (runId: string): Promise<void> =>
+    ipcRenderer.invoke('suite:cancelLocal', runId),
 
   onSupervisorEvent: (listener: (event: SupervisorEvent) => void): (() => void) => {
     const handler = (_event: IpcRendererEvent, payload: SupervisorEvent) => listener(payload);
