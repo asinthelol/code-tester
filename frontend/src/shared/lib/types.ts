@@ -151,3 +151,10 @@ export interface SuiteRun {
   testOrder: string[];
   tests: Record<string, SuiteTestState>;
 }
+
+export interface PersistedState {
+  files: ImportedFile[];
+  tests: Test[];
+  environments: IntegrationEnvironment[];
+  repos: Repo[];
+}
