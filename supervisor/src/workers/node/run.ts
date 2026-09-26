@@ -77,7 +77,7 @@ export async function runNodeSuite(
   emitEvent({ protocolVersion: 1, runId, type: 'run.started' });
 
   try {
-    await importFresh(path.join(suiteRoot, entryPoint));
+    await importFresh(path.resolve(suiteRoot, entryPoint));
   } catch (error) {
     emitEvent({
       protocolVersion: 1,
