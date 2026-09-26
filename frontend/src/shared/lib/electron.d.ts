@@ -2,6 +2,7 @@ import type {
   EnvironmentEvent,
   ImportedFile,
   IntegrationEnvironment,
+  PersistedState,
   RepoAnalysis,
   RepoScaffoldEvent,
   RunEvent,
@@ -35,6 +36,8 @@ declare global {
       scaffoldRepo: (request: ScaffoldRequest) => Promise<IntegrationEnvironment>;
       cancelScaffoldRepo: () => Promise<void>;
       onRepoScaffoldEvent: (listener: (event: RepoScaffoldEvent) => void) => () => void;
+      loadState: () => Promise<PersistedState>;
+      saveState: (state: PersistedState) => Promise<void>;
     };
   }
 }

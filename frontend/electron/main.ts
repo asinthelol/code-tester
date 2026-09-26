@@ -26,7 +26,13 @@ import { synthesizeDockerTarget, synthesizeLocalTarget } from './lib/synthesizeT
 import { analyzeRepo } from './lib/repoAnalyzer.ts';
 import { pickRepoDirectory } from './lib/pickRepoDirectory.ts';
 import { cancelScaffold, scaffoldRepo } from './lib/scaffoldRepo.ts';
-import type { RunRequest, ScaffoldRequest, TargetRunRequest } from '../src/shared/lib/types.ts';
+import { loadState, saveState } from './lib/appState.ts';
+import type {
+  PersistedState,
+  RunRequest,
+  ScaffoldRequest,
+  TargetRunRequest,
+} from '../src/shared/lib/types.ts';
 import type { Event as SuiteEvent } from '../../protocol/v1/typescript/index.ts';
 
 function isTerminalSuiteEvent(event: SuiteEvent): boolean {
@@ -174,6 +180,10 @@ ipcMain.handle('repo:scaffold', (event, request: ScaffoldRequest) =>
 );
 
 ipcMain.handle('repo:cancelScaffold', () => cancelScaffold());
+
+ipcMain.handle('state:load', () => loadState());
+
+ipcMain.handle('state:save', (_event, state: PersistedState) => saveState(state));
 
 const STOP_ENVIRONMENTS_TIMEOUT_MS = 15_000;
 

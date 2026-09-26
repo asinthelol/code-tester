@@ -4,6 +4,7 @@ import type {
   EnvironmentEvent,
   ImportedFile,
   IntegrationEnvironment,
+  PersistedState,
   RepoAnalysis,
   RepoScaffoldEvent,
   RunEvent,
@@ -86,4 +87,8 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.on('repo:scaffold:event', handler);
     return () => ipcRenderer.removeListener('repo:scaffold:event', handler);
   },
+
+  loadState: (): Promise<PersistedState> => ipcRenderer.invoke('state:load'),
+
+  saveState: (state: PersistedState): Promise<void> => ipcRenderer.invoke('state:save', state),
 });
