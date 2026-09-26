@@ -62,6 +62,53 @@ export interface IntegrationEnvironment {
   services: string[];
 }
 
+export interface Repo {
+  path: string;
+  name: string;
+  environmentPath: string | null;
+}
+
+export type BackingServiceType = 'postgres' | 'redis' | 'mysql' | 'mongodb';
+
+export interface DetectedService {
+  name: string;
+  relativePath: string;
+  buildStrategy: 'dockerfile' | 'buildpacks';
+}
+
+export interface BackingServiceSource {
+  service: string;
+  envVarName?: string;
+}
+
+export interface BackingServiceSuggestion {
+  type: BackingServiceType;
+  autoWireable: boolean;
+  detectedVia: string;
+  sources: BackingServiceSource[];
+  confirmed: boolean;
+}
+
+export interface RepoAnalysis {
+  repoPath: string;
+  repoName: string;
+  services: DetectedService[];
+  backingServices: BackingServiceSuggestion[];
+}
+
+export interface ScaffoldRequest {
+  repoPath: string;
+  repoName: string;
+  services: DetectedService[];
+  backingServices: BackingServiceSuggestion[];
+}
+
+export type RepoScaffoldEvent =
+  | { type: 'scaffold.status'; message: string }
+  | { type: 'scaffold.buildpacks.status'; service: string; message: string }
+  | { type: 'scaffold.completed'; environment: IntegrationEnvironment }
+  | { type: 'scaffold.failed'; message: string };
+
 export type EnvironmentEvent =
   | { type: 'compose.status'; message: string }
   | { type: 'environment.ready' }
