@@ -5,6 +5,7 @@ import type { ChildProcess } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { parse } from 'yaml';
 import type { EnvironmentEvent, IntegrationEnvironment } from '../../src/shared/lib/types.ts';
+import { lineBuffered } from './ndjson.ts';
 
 
 
@@ -52,21 +53,6 @@ function friendlyDockerError(error: NodeJS.ErrnoException): string {
     return 'Docker CLI not found. Is Docker Desktop installed and running?';
   }
   return error.message;
-}
-
-function lineBuffered(onLine: (line: string) => void) {
-  let buffer = '';
-  return (data: Buffer) => {
-
-    buffer += data.toString('utf-8');
-    let newlineIndex: number;
-    while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
-      
-      const line = buffer.slice(0, newlineIndex).replace(/\r$/, '');
-      buffer = buffer.slice(newlineIndex + 1);
-      if (line.trim()) onLine(line);
-    }
-  };
 }
 
 export async function startEnvironment(
