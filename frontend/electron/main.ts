@@ -41,8 +41,7 @@ function runPendingCleanup(runId: string): void {
 }
 
 // configPaths of environments that reached "ready" and haven't been
-// explicitly stopped -- these get torn down automatically on quit so
-// Docker containers don't keep running after the app closes.
+// explicitly stopped torn down automatically on quit.
 const readyEnvironments = new Set<string>();
 
 
