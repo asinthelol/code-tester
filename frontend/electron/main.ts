@@ -40,6 +40,11 @@ function runPendingCleanup(runId: string): void {
   }
 }
 
+// configPaths of environments that reached "ready" and haven't been
+// explicitly stopped -- these get torn down automatically on quit so
+// Docker containers don't keep running after the app closes.
+const readyEnvironments = new Set<string>();
+
 
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -69,6 +74,7 @@ ipcMain.handle('environment:start', (event, configPath: string) =>
   startEnvironment(configPath, (envEvent) => {
     event.sender.send('environment:event', envEvent);
     if (envEvent.type === 'environment.ready') {
+      readyEnvironments.add(configPath);
       attachSupervisor(configPath, (supervisorEvent) => {
         event.sender.send('supervisor:event', supervisorEvent);
         if (isTerminalSuiteEvent(supervisorEvent)) {
@@ -83,6 +89,7 @@ ipcMain.handle('environment:cancelStart', () => cancelStart());
 
 ipcMain.handle('environment:stop', (event, configPath: string) => {
   detachSupervisor();
+  readyEnvironments.delete(configPath);
   return stopEnvironment(configPath, (envEvent) =>
     event.sender.send('environment:event', envEvent)
   );
@@ -154,10 +161,32 @@ ipcMain.handle('suite:cancelLocal', (event, runId: string) =>
   })
 );
 
-app.on('before-quit', () => {
+const STOP_ENVIRONMENTS_TIMEOUT_MS = 15_000;
+
+function withTimeout(promise: Promise<void>, ms: number): Promise<void> {
+  return Promise.race([
+    promise,
+    new Promise<void>((resolve) => setTimeout(resolve, ms)),
+  ]);
+}
+
+let quitting = false;
+
+app.on('before-quit', (event) => {
+  if (quitting) return;
+  event.preventDefault();
+  quitting = true;
+
   stopTest();
   detachSupervisor();
   detachLocalWorker();
+
+  const shutdowns = [...readyEnvironments].map((configPath) => stopEnvironment(configPath));
+  readyEnvironments.clear();
+
+  void withTimeout(Promise.all(shutdowns).then(() => {}), STOP_ENVIRONMENTS_TIMEOUT_MS).then(() => {
+    app.quit();
+  });
 });
 
 const createWindow = () => {
