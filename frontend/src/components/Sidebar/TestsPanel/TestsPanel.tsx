@@ -46,12 +46,6 @@ function TestsPanel({ tests, environments, activeId, onSelect, onConfigure }: Te
       <div className="flex h-14 items-center justify-center border-b border-neutral-300 px-3 py-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-700">
         Tests
       </div>
-
-      {tests.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center px-3 text-center text-sm text-neutral-500">
-          No tests yet
-        </div>
-      ) : (
         <div className="flex-1 overflow-auto">
           {groups.map((group) => (
             <div key={group.key ?? '__local__'}>
@@ -127,7 +121,6 @@ function TestsPanel({ tests, environments, activeId, onSelect, onConfigure }: Te
             </div>
           ))}
         </div>
-      )}
     </div>
   );
 }

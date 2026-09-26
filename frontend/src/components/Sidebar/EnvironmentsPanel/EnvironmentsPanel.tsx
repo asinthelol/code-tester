@@ -12,12 +12,6 @@ function EnvironmentsPanel({ environments, activePath, onSelect }: EnvironmentsP
       <div className="flex h-14 items-center justify-center border-b border-neutral-300 px-3 py-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-700">
         Environments
       </div>
-
-      {environments.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center px-3 text-center text-sm text-neutral-500">
-          No environments yet
-        </div>
-      ) : (
         <ul className="flex-1 overflow-auto">
           {environments.map((env) => (
             <li key={env.path}>
@@ -47,7 +41,6 @@ function EnvironmentsPanel({ environments, activePath, onSelect }: EnvironmentsP
             </li>
           ))}
         </ul>
-      )}
     </div>
   );
 }

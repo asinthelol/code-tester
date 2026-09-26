@@ -60,7 +60,7 @@ function Toolbar({ activeSection, environments, onImport, onAddTest, onAddEnviro
   };
 
   return (
-    <div className="grid h-14 grid-cols-[7fr_3fr] items-center border-b border-neutral-300 px-6 dark:border-neutral-700">
+    <div className="grid h-14 grid-cols-[5fr_5fr] items-center border-b border-neutral-300 px-6 dark:border-neutral-700">
       <Breadcrumbs items={[activeSection]} />
 
       <div className="flex items-center justify-end gap-8">
