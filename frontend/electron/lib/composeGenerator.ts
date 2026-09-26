@@ -28,12 +28,29 @@ const BACKING_SERVICE_BLOCKS: Record<string, Record<string, unknown>> = {
       retries: 10,
     },
   },
+  mysql: {
+    image: 'mysql:8',
+    environment: { MYSQL_ROOT_PASSWORD: 'test', MYSQL_DATABASE: 'app' },
+    healthcheck: {
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost'],
+      interval: '2s',
+      timeout: '3s',
+      retries: 10,
+    },
+  },
 };
 
-function connectionString(type: 'postgres' | 'redis'): string {
-  return type === 'postgres'
-    ? 'postgresql://postgres:test@postgres:5432/app'
-    : 'redis://redis:6379';
+type WireableType = 'postgres' | 'redis' | 'mysql';
+
+function connectionString(type: WireableType): string {
+  switch (type) {
+    case 'postgres':
+      return 'postgresql://postgres:test@postgres:5432/app';
+    case 'redis':
+      return 'redis://redis:6379';
+    case 'mysql':
+      return 'mysql://root:test@mysql:3306/app';
+  }
 }
 
 // Auto-wiring is deliberately restricted to what supervisor/context.ts
@@ -41,8 +58,8 @@ function connectionString(type: 'postgres' | 'redis'): string {
 // See BackingServiceSuggestion.autoWireable.
 function wireableServices(confirmed: BackingServiceSuggestion[]) {
   return confirmed.filter(
-    (s): s is BackingServiceSuggestion & { type: 'postgres' | 'redis' } =>
-      s.confirmed && (s.type === 'postgres' || s.type === 'redis')
+    (s): s is BackingServiceSuggestion & { type: WireableType } =>
+      s.confirmed && (s.type === 'postgres' || s.type === 'redis' || s.type === 'mysql')
   );
 }
 
@@ -62,7 +79,11 @@ export function buildComposeDocument(
 
     const block: Record<string, unknown> = {};
     if (svc.buildStrategy === 'dockerfile') {
-      block.build = svc.relativePath === '.' ? '.' : `./${svc.relativePath}`;
+      if (svc.buildContext === 'repoRoot') {
+        block.build = { context: '.', dockerfile: `${svc.relativePath}/Dockerfile` };
+      } else {
+        block.build = svc.relativePath === '.' ? '.' : `./${svc.relativePath}`;
+      }
     } else {
       const tag = imageTags[svc.name];
       if (!tag) throw new Error(`No built image tag found for buildpacks service "${svc.name}"`);
@@ -106,6 +127,15 @@ export function buildComposeDocument(
   }
   if (backing.some((b) => b.type === 'redis')) {
     Object.assign(supervisorEnv, { REDIS_HOST: 'redis', REDIS_PORT: '6379' });
+  }
+  if (backing.some((b) => b.type === 'mysql')) {
+    Object.assign(supervisorEnv, {
+      MYSQL_HOST: 'mysql',
+      MYSQL_PORT: '3306',
+      MYSQL_USER: 'root',
+      MYSQL_PASSWORD: 'test',
+      MYSQL_DATABASE: 'app',
+    });
   }
 
   services.supervisor = {
@@ -160,6 +190,42 @@ defineTest('replace me with a real test', {
   },
 });
 `;
+
+// Dockerfiles frequently do `COPY .env ./`, which fails the build outright
+// if only `.env.example` exists -- the normal state for a fresh clone.
+// Copying the example into place (the same first step most READMEs tell a
+// human to do by hand) avoids an otherwise-opaque build failure.
+//
+// `.env` has to land wherever the build context expects it (targetDir),
+// but `.env.example` isn't always in that same directory -- a service's
+// own subdirectory commonly keeps its own .env.example even when the
+// Dockerfile's build context is the repo root. Check each candidate in
+// order and copy the first one found.
+export async function ensureEnvFile(
+  targetDir: string,
+  exampleSourceDirs: string[]
+): Promise<'copied' | 'skipped'> {
+  const envPath = path.join(targetDir, '.env');
+  try {
+    await fs.access(envPath);
+    return 'skipped';
+  } catch {
+    // Doesn't exist yet -- proceed.
+  }
+
+  for (const sourceDir of exampleSourceDirs) {
+    const examplePath = path.join(sourceDir, '.env.example');
+    try {
+      await fs.access(examplePath);
+    } catch {
+      continue;
+    }
+    await fs.copyFile(examplePath, envPath);
+    return 'copied';
+  }
+
+  return 'skipped';
+}
 
 export async function scaffoldTestsStub(repoPath: string): Promise<'written' | 'skipped'> {
   const testsDir = path.join(repoPath, 'tests');
