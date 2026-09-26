@@ -2,8 +2,9 @@ import { useState } from 'react';
 import Button from '../ui/Button/Button';
 import AddButton from './AddButton/AddButton';
 import AddTestModal from './AddTestModal/AddTestModal';
+import RepoWizardModal from './RepoWizardModal/RepoWizardModal';
 import Breadcrumbs from './Breadcrumbs/Breadcrumbs';
-import type { ImportedFile, IntegrationEnvironment, TestSpec } from '../../shared/lib/types';
+import type { ImportedFile, IntegrationEnvironment, Repo, TestSpec } from '../../shared/lib/types';
 
 interface ToolbarProps {
   activeSection: string;
@@ -11,6 +12,7 @@ interface ToolbarProps {
   onImport: (file: ImportedFile) => void;
   onAddTest: (test: { name: string; environmentPath: string | null; spec: TestSpec }) => void;
   onAddEnvironment: (environment: IntegrationEnvironment) => void;
+  onAddRepo: (result: { repo: Repo; environment: IntegrationEnvironment }) => void;
 }
 
 const ADD_BUTTON_LABELS: Record<string, string> = {
@@ -31,9 +33,17 @@ const BellIcon = () => (
   </svg>
 );
 
-function Toolbar({ activeSection, environments, onImport, onAddTest, onAddEnvironment }: ToolbarProps) {
+function Toolbar({
+  activeSection,
+  environments,
+  onImport,
+  onAddTest,
+  onAddEnvironment,
+  onAddRepo,
+}: ToolbarProps) {
   const addButtonLabel = ADD_BUTTON_LABELS[activeSection];
   const [testModalOpen, setTestModalOpen] = useState(false);
+  const [repoWizardOpen, setRepoWizardOpen] = useState(false);
 
   const handleAdd = async () => {
     if (activeSection === 'Files') {
@@ -56,6 +66,8 @@ function Toolbar({ activeSection, environments, onImport, onAddTest, onAddEnviro
       } catch (error) {
         console.error('Failed to import environment:', error);
       }
+    } else if (activeSection === 'Repos') {
+      setRepoWizardOpen(true);
     }
   };
 
@@ -75,6 +87,15 @@ function Toolbar({ activeSection, environments, onImport, onAddTest, onAddEnviro
         onClose={() => setTestModalOpen(false)}
         environments={environments}
         onAdd={onAddTest}
+      />
+
+      <RepoWizardModal
+        open={repoWizardOpen}
+        onClose={() => setRepoWizardOpen(false)}
+        onComplete={(result) => {
+          setRepoWizardOpen(false);
+          onAddRepo(result);
+        }}
       />
     </div>
   );
