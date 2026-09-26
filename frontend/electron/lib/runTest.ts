@@ -8,9 +8,9 @@ import type { RunEvent, RunRequest } from '../../src/shared/lib/types.ts';
 
 const RESULT_MARKER = '\u0001CT_RESULT\u0001';
 
+// JS/TS targets run through the suite protocol (see synthesizeTarget.ts);
+// this now only serves Python, which doesn't have a worker yet.
 const COMMANDS: Record<string, string> = {
-  js: 'node',
-  jsx: 'node',
   py: 'python3',
 };
 
@@ -25,17 +25,6 @@ export function stopTest(): void {
 
 function buildHarness(extension: string, request: RunRequest): string {
   const { sourceContent, functionName } = request;
-
-  if (extension === 'js' || extension === 'jsx') {
-    return `${sourceContent}
-
-(() => {
-  const __args = ${JSON.stringify(JSON.parse(request.argsJson || '[]'))};
-  const __result = ${functionName}(...__args);
-  console.log(${JSON.stringify(RESULT_MARKER)} + JSON.stringify(__result === undefined ? null : __result));
-})();
-`;
-  }
 
   if (extension === 'py') {
     return `${sourceContent}
