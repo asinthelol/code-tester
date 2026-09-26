@@ -15,9 +15,8 @@ import type {
   EnvironmentStatus,
   ImportedFile,
   IntegrationEnvironment,
-  IntegrationTest,
   SuiteRun,
-  TestItem,
+  Test,
   TestTarget,
 } from './shared/lib/types';
 
@@ -38,14 +37,10 @@ function replaceByPath<T extends { path: string }>(list: T[], oldPath: string, u
 function App() {
   const [files, setFiles] = useState<ImportedFile[]>([]);
   const [activePath, setActivePath] = useState<string | null>(null);
-  const [tests, setTests] = useState<TestItem[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
   const [activeTestId, setActiveTestId] = useState<string | null>(null);
   const [environments, setEnvironments] = useState<IntegrationEnvironment[]>([]);
   const [activeEnvironmentPath, setActiveEnvironmentPath] = useState<string | null>(null);
-  const [integrationTests, setIntegrationTests] = useState<IntegrationTest[]>([]);
-  const [selectedIntegrationTestId, setSelectedIntegrationTestId] = useState<string | null>(
-    null
-  );
   const [activeSection, setActiveSection] = useState('Files');
   const [targetPickerFor, setTargetPickerFor] = useState<string | null>(null);
   const [runSetupError, setRunSetupError] = useState<string | null>(null);
@@ -171,30 +166,21 @@ function App() {
     setRunningEnvironmentPath(null);
   };
 
-  const handleRunSuite = async (test: IntegrationTest) => {
-    const runId = crypto.randomUUID();
-    runIdToTestId.current[runId] = test.id;
-    setSuiteRuns((prev) => ({
-      ...prev,
-      [test.id]: { runId, status: 'running', failedReason: null, testOrder: [], tests: {} },
-    }));
-    await window.electron.supervisorExecute(runId, test.entryPoint);
-  };
-
-  const handleCancelSuite = async (test: IntegrationTest, configPath: string) => {
-    const run = suiteRuns[test.id];
-    if (!run) return;
-    await window.electron.supervisorCancel(run.runId, configPath);
-  };
-
   const handleImport = (file: ImportedFile) => {
     setFiles((prev) => upsertByPath(prev, file));
     setActivePath(file.path);
   };
 
-  const handleAddTest = (test: { name: string }) => {
+  const handleAddTest = (test: {
+    name: string;
+    environmentPath: string | null;
+    spec: Test['spec'];
+  }) => {
     const id = crypto.randomUUID();
-    setTests((prev) => [...prev, { id, name: test.name, target: null }]);
+    setTests((prev) => [
+      ...prev,
+      { id, name: test.name, environmentPath: test.environmentPath, spec: test.spec },
+    ]);
     setActiveTestId(id);
   };
 
@@ -203,23 +189,14 @@ function App() {
     setActiveEnvironmentPath(environment.path);
   };
 
-  const handleAddIntegrationTest = (test: { name: string; entryPoint: string }) => {
-    if (!activeEnvironmentPath) return;
-    setIntegrationTests((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: test.name,
-        entryPoint: test.entryPoint,
-        environmentPath: activeEnvironmentPath,
-      },
-    ]);
-  };
-
   const handleSelectTarget = (target: TestTarget) => {
     if (!targetPickerFor) return;
     setTests((prev) =>
-      prev.map((t) => (t.id === targetPickerFor ? { ...t, target } : t))
+      prev.map((t) =>
+        t.id === targetPickerFor && t.spec.kind === 'target'
+          ? { ...t, spec: { kind: 'target', target } }
+          : t
+      )
     );
     setTargetPickerFor(null);
   };
@@ -238,6 +215,13 @@ function App() {
       ? environmentStatus
       : 'idle';
 
+  const activeTestEnvironment =
+    environments.find((e) => e.path === activeTest?.environmentPath) ?? null;
+  const activeTestEnvironmentStatus: EnvironmentStatus =
+    activeTest?.environmentPath && activeTest.environmentPath === runningEnvironmentPath
+      ? environmentStatus
+      : 'idle';
+
   const getExtension = (filePath: string) => {
     const match = /\.([^./\\]+)$/.exec(filePath);
     return match ? match[1].toLowerCase() : '';
@@ -253,25 +237,45 @@ function App() {
 
   const handleRunTest = async () => {
     if (!activeTest) return;
-    if (!activeTest.target) {
-      setTargetPickerFor(activeTest.id);
+
+    if (activeTest.spec.kind === 'target') {
+      const target = activeTest.spec.target;
+      if (!target) {
+        setTargetPickerFor(activeTest.id);
+        return;
+      }
+
+      const targetFile = files.find((f) => f.path === target.filePath);
+      if (!targetFile) {
+        setRunSetupError('Target file is no longer available. Configure a new target.');
+        return;
+      }
+
+      setRunSetupError(null);
+      await window.electron.runStart({
+        sourceContent: targetFile.content,
+        sourceExtension: getExtension(targetFile.path),
+        functionName: target.functionName,
+        argsJson: target.argsJson,
+        expectedJson: target.expectedJson,
+      });
       return;
     }
 
-    const targetFile = files.find((f) => f.path === activeTest.target!.filePath);
-    if (!targetFile) {
-      setRunSetupError('Target file is no longer available. Configure a new target.');
-      return;
-    }
+    const runId = crypto.randomUUID();
+    runIdToTestId.current[runId] = activeTest.id;
+    setSuiteRuns((prev) => ({
+      ...prev,
+      [activeTest.id]: { runId, status: 'running', failedReason: null, testOrder: [], tests: {} },
+    }));
+    await window.electron.supervisorExecute(runId, activeTest.spec.entryPoint);
+  };
 
-    setRunSetupError(null);
-    await window.electron.runStart({
-      sourceContent: targetFile.content,
-      sourceExtension: getExtension(targetFile.path),
-      functionName: activeTest.target.functionName,
-      argsJson: activeTest.target.argsJson,
-      expectedJson: activeTest.target.expectedJson,
-    });
+  const handleCancelTest = async () => {
+    if (!activeTest || activeTest.spec.kind !== 'entryPoint' || !activeTest.environmentPath) return;
+    const run = suiteRuns[activeTest.id];
+    if (!run) return;
+    await window.electron.supervisorCancel(run.runId, activeTest.environmentPath);
   };
 
   return (
@@ -286,6 +290,7 @@ function App() {
       {activeSection === 'Tests' && (
         <TestsPanel
           tests={tests}
+          environments={environments}
           activeId={activeTestId}
           onSelect={setActiveTestId}
           onConfigure={(test) => setTargetPickerFor(test.id)}
@@ -295,16 +300,14 @@ function App() {
         <EnvironmentsPanel
           environments={environments}
           activePath={activeEnvironmentPath}
-          onSelect={(path) => {
-            setActiveEnvironmentPath(path);
-            setSelectedIntegrationTestId(null);
-          }}
+          onSelect={setActiveEnvironmentPath}
         />
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Toolbar
           activeSection={activeSection}
+          environments={environments}
           onImport={handleImport}
           onAddTest={handleAddTest}
           onAddEnvironment={handleAddEnvironment}
@@ -318,15 +321,6 @@ function App() {
               log={activeEnvironmentPath === runningEnvironmentPath ? environmentLog : []}
               onStart={() => handleStartEnvironment(activeEnvironment.path)}
               onStop={() => handleStopEnvironment(activeEnvironment.path)}
-              integrationTests={integrationTests.filter(
-                (t) => t.environmentPath === activeEnvironment.path
-              )}
-              onAddIntegrationTest={handleAddIntegrationTest}
-              selectedTestId={selectedIntegrationTestId}
-              onSelectTest={setSelectedIntegrationTestId}
-              suiteRuns={suiteRuns}
-              onRunSuite={handleRunSuite}
-              onCancelSuite={(test) => handleCancelSuite(test, activeEnvironment.path)}
             />
           ) : (
             <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
@@ -337,9 +331,19 @@ function App() {
           activeTest ? (
             <TestDetail
               test={activeTest}
+              environment={activeTestEnvironment}
+              environmentStatus={activeTestEnvironmentStatus}
+              suiteRun={suiteRuns[activeTest.id]}
               runSetupError={runSetupError}
               onRun={handleRunTest}
+              onCancel={handleCancelTest}
               onConfigureTarget={() => setTargetPickerFor(activeTest.id)}
+              onStartEnvironment={() =>
+                activeTest.environmentPath && handleStartEnvironment(activeTest.environmentPath)
+              }
+              onStopEnvironment={() =>
+                activeTest.environmentPath && handleStopEnvironment(activeTest.environmentPath)
+              }
             />
           ) : (
             <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
