@@ -31,6 +31,15 @@ export interface Test {
   spec: TestSpec;
 }
 
+export interface TargetRunRequest {
+  runId: string;
+  testName: string;
+  target: TestTarget;
+  sourceContent: string;
+  extension: string;
+  environmentPath: string | null;
+}
+
 export interface RunRequest {
   sourceContent: string;
   sourceExtension: string;
