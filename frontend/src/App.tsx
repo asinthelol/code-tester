@@ -16,6 +16,7 @@ import type {
   EnvironmentStatus,
   ImportedFile,
   IntegrationEnvironment,
+  Repo,
   SuiteRun,
   Test,
   TestTarget,
@@ -42,6 +43,7 @@ function App() {
   const [activeTestId, setActiveTestId] = useState<string | null>(null);
   const [environments, setEnvironments] = useState<IntegrationEnvironment[]>([]);
   const [activeEnvironmentPath, setActiveEnvironmentPath] = useState<string | null>(null);
+  const [repos, setRepos] = useState<Repo[]>([]);
   const [activeSection, setActiveSection] = useState('Files');
   const [targetPickerFor, setTargetPickerFor] = useState<string | null>(null);
   const [runSetupError, setRunSetupError] = useState<string | null>(null);
@@ -190,6 +192,20 @@ function App() {
     setActiveEnvironmentPath(environment.path);
   };
 
+  const handleAddRepo = ({ repo, environment }: { repo: Repo; environment: IntegrationEnvironment }) => {
+    setEnvironments((prev) => upsertByPath(prev, environment));
+    setRepos((prev) => upsertByPath(prev, repo));
+    setActiveEnvironmentPath(environment.path);
+    setActiveSection('Environments');
+  };
+
+  const handleSelectRepo = (repoPath: string) => {
+    const repo = repos.find((r) => r.path === repoPath);
+    if (!repo?.environmentPath) return;
+    setActiveEnvironmentPath(repo.environmentPath);
+    setActiveSection('Environments');
+  };
+
   const handleSelectTarget = (target: TestTarget) => {
     if (!targetPickerFor) return;
     setTests((prev) =>
@@ -308,7 +324,13 @@ function App() {
       <Sidebar activeItem={activeSection} onNavigate={setActiveSection} />
 
       {activeSection === 'Dashboard' && <DashboardPanel />}
-      {activeSection === 'Repos' && <ReposPanel />}
+      {activeSection === 'Repos' && (
+        <ReposPanel
+          repos={repos}
+          activePath={repos.find((r) => r.environmentPath === activeEnvironmentPath)?.path ?? null}
+          onSelect={handleSelectRepo}
+        />
+      )}
       {activeSection === 'Files' && (
         <FilesPanel files={files} activePath={activePath} onSelect={setActivePath} />
       )}
@@ -336,6 +358,7 @@ function App() {
           onImport={handleImport}
           onAddTest={handleAddTest}
           onAddEnvironment={handleAddEnvironment}
+          onAddRepo={handleAddRepo}
         />
 
         {activeSection === 'Environments' ? (
