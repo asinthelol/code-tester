@@ -42,14 +42,23 @@ const BACKING_SERVICE_BLOCKS: Record<string, Record<string, unknown>> = {
 
 type WireableType = 'postgres' | 'redis' | 'mysql';
 
-function connectionString(type: WireableType): string {
+const DEFAULT_SCHEME: Record<WireableType, string> = {
+  postgres: 'postgresql',
+  redis: 'redis',
+  mysql: 'mysql',
+};
+
+// `scheme` overrides the default scheme when the detected client
+// library needs a specific one. See BackingServiceSource.scheme.
+function connectionString(type: WireableType, scheme?: string): string {
+  const effectiveScheme = scheme ?? DEFAULT_SCHEME[type];
   switch (type) {
     case 'postgres':
-      return 'postgresql://postgres:test@postgres:5432/app';
+      return `${effectiveScheme}://postgres:test@postgres:5432/app`;
     case 'redis':
-      return 'redis://redis:6379';
+      return `${effectiveScheme}://redis:6379`;
     case 'mysql':
-      return 'mysql://root:test@mysql:3306/app';
+      return `${effectiveScheme}://root:test@mysql:3306/app`;
   }
 }
 
@@ -95,7 +104,7 @@ export function buildComposeDocument(
     for (const b of backing) {
       const source = b.sources.find((s) => s.service === svc.name && s.envVarName);
       if (source?.envVarName) {
-        envVars[source.envVarName] = connectionString(b.type);
+        envVars[source.envVarName] = connectionString(b.type, source.scheme);
       }
     }
     if (Object.keys(envVars).length > 0) block.environment = envVars;

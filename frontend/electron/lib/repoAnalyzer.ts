@@ -79,7 +79,10 @@ async function detectServices(repoPath: string): Promise<DetectedService[]> {
 
 // Small starter table, not exhaustive
 //  new ecosystems/libraries get added as they come up
-const MANIFEST_SIGNALS: Record<string, { pattern: RegExp; type: BackingServiceType }[]> = {
+const MANIFEST_SIGNALS: Record<
+  string,
+  { pattern: RegExp; type: BackingServiceType; scheme?: string }[]
+> = {
   'package.json': [
     { pattern: /"pg"\s*:/, type: 'postgres' },
     { pattern: /"(mysql2?|mariadb)"\s*:/, type: 'mysql' },
@@ -87,8 +90,11 @@ const MANIFEST_SIGNALS: Record<string, { pattern: RegExp; type: BackingServiceTy
     { pattern: /"mongo(db|oose)"\s*:/, type: 'mongodb' },
   ],
   'requirements.txt': [
-    { pattern: /^(psycopg2(-binary)?|asyncpg)\b/im, type: 'postgres' },
-    { pattern: /^(pymysql|mysqlclient|mysql-connector-python)\b/im, type: 'mysql' },
+    { pattern: /^psycopg2(-binary)?\b/im, type: 'postgres' },
+    { pattern: /^asyncpg\b/im, type: 'postgres', scheme: 'postgresql+asyncpg' },
+    { pattern: /^pymysql\b/im, type: 'mysql', scheme: 'mysql+pymysql' },
+    { pattern: /^mysqlclient\b/im, type: 'mysql' },
+    { pattern: /^mysql-connector-python\b/im, type: 'mysql', scheme: 'mysql+mysqlconnector' },
     { pattern: /^redis\b/im, type: 'redis' },
     { pattern: /^(pymongo|motor)\b/im, type: 'mongodb' },
   ],
@@ -123,6 +129,7 @@ const ENV_KEY_TYPES: { pattern: RegExp; type: BackingServiceType }[] = [
 interface RawSignal {
   type: BackingServiceType | null;
   envVarName?: string;
+  scheme?: string;
   detail: string;
 }
 
@@ -134,7 +141,7 @@ async function scanManifest(serviceDir: string): Promise<RawSignal[]> {
     const content = await fs.readFile(filePath, 'utf-8');
     for (const rule of rules) {
       if (rule.pattern.test(content)) {
-        signals.push({ type: rule.type, detail: file });
+        signals.push({ type: rule.type, scheme: rule.scheme, detail: file });
       }
     }
   }
@@ -188,10 +195,12 @@ async function detectBackingServices(
 
     const resolved: RawSignal[] = envSignals.filter((s) => s.type);
     if (manifestType) {
+      const matchedManifestSignal = manifestSignals.find((s) => s.type === manifestType)!;
       resolved.push({
         type: manifestType,
         envVarName: typelessEnvVar,
-        detail: manifestSignals.find((s) => s.type === manifestType)!.detail,
+        scheme: matchedManifestSignal.scheme,
+        detail: matchedManifestSignal.detail,
       });
     } else if (typelessEnvVar) {
       // An env var like DATABASE_URL exists but has no value/scheme to
@@ -205,7 +214,11 @@ async function detectBackingServices(
       const detailText = `${service.name} (${signal.detail}${signal.envVarName ? `, ${signal.envVarName}` : ''})`;
       if (existing) {
         existing.detectedVia += `; ${detailText}`;
-        existing.sources.push({ service: service.name, envVarName: signal.envVarName });
+        existing.sources.push({
+          service: service.name,
+          envVarName: signal.envVarName,
+          scheme: signal.scheme,
+        });
       } else {
         const autoWireable =
           signal.type === 'postgres' || signal.type === 'redis' || signal.type === 'mysql';
@@ -213,7 +226,7 @@ async function detectBackingServices(
           type: signal.type,
           autoWireable,
           detectedVia: detailText,
-          sources: [{ service: service.name, envVarName: signal.envVarName }],
+          sources: [{ service: service.name, envVarName: signal.envVarName, scheme: signal.scheme }],
           confirmed: autoWireable,
         });
       }

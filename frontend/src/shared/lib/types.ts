@@ -85,6 +85,10 @@ export interface DetectedService {
 export interface BackingServiceSource {
   service: string;
   envVarName?: string;
+  // Overrides the connection string's URL when needed
+  // (e.g. SQLAlchemy + pymysql needs "mysql+pymysql://")
+  // Undefined defaults to the usual "mysql://" which is fine for other languages
+  scheme?: string;
 }
 
 export interface BackingServiceSuggestion {
