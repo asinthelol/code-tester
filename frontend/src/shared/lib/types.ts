@@ -74,6 +74,12 @@ export interface DetectedService {
   name: string;
   relativePath: string;
   buildStrategy: 'dockerfile' | 'buildpacks';
+  // Only meaningful when buildStrategy is 'dockerfile'. 'repoRoot' when the
+  // Dockerfile's own COPY/ADD sources reference paths prefixed with the
+  // service's own directory name (e.g. `COPY backend/requirements.txt`),
+  // which only resolves correctly if the build context is the repo root,
+  // not the service's own directory.
+  buildContext: 'own' | 'repoRoot';
 }
 
 export interface BackingServiceSource {

@@ -2,6 +2,7 @@ import path from 'node:path';
 import { buildWithBuildpacks, cancelBuildpacksBuild } from './buildpacks.ts';
 import {
   buildComposeDocument,
+  ensureEnvFile,
   scaffoldTestsStub,
   serializeCompose,
   writeComposeFile,
@@ -26,11 +27,23 @@ export async function scaffoldRepo(
 
   try {
     for (const service of services) {
-      if (service.buildStrategy !== 'buildpacks') continue;
+      const serviceDir = service.relativePath === '.' ? repoPath : path.join(repoPath, service.relativePath);
+
+      if (service.buildStrategy === 'dockerfile') {
+        const envContextDir = service.buildContext === 'repoRoot' ? repoPath : serviceDir;
+        const exampleSourceDirs = [...new Set([envContextDir, serviceDir])];
+        const envResult = await ensureEnvFile(envContextDir, exampleSourceDirs);
+        if (envResult === 'copied') {
+          onEvent({
+            type: 'scaffold.status',
+            message: `Copied .env.example to .env for ${service.name} (${path.relative(repoPath, envContextDir) || '.'})`,
+          });
+        }
+        continue;
+      }
 
       const tag = `code-tester-repo-${service.name}:latest`;
       onEvent({ type: 'scaffold.status', message: `Building ${service.name} with buildpacks...` });
-      const serviceDir = service.relativePath === '.' ? repoPath : path.join(repoPath, service.relativePath);
       await buildWithBuildpacks(serviceDir, tag, (line) =>
         onEvent({ type: 'scaffold.buildpacks.status', service: service.name, message: line })
       );

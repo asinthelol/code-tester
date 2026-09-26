@@ -26,6 +26,21 @@ async function hasManifest(dir: string): Promise<boolean> {
   return false;
 }
 
+// A Dockerfile that lives inside a service subdirectory sometimes still
+// writes its COPY/ADD sources relative to the repo root
+// (`docker build -f backend/Dockerfile .` from the repo root).
+async function detectDockerfileBuildContext(
+  serviceDir: string,
+  dirName: string
+): Promise<'own' | 'repoRoot'> {
+  const dockerfilePath = path.join(serviceDir, 'Dockerfile');
+  if (!(await exists(dockerfilePath))) return 'own';
+
+  const content = await fs.readFile(dockerfilePath, 'utf-8');
+  const prefixPattern = new RegExp(`^\\s*(COPY|ADD)\\s+(?:--\\S+\\s+)*${dirName}/`, 'im');
+  return prefixPattern.test(content) ? 'repoRoot' : 'own';
+}
+
 export function sanitizeServiceName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9_-]/g, '-') || 'app';
 }
@@ -50,10 +65,13 @@ async function detectServices(repoPath: string): Promise<DetectedService[]> {
   for (const relativePath of dirsToUse) {
     const serviceDir = relativePath ? path.join(repoPath, relativePath) : repoPath;
     const name = sanitizeServiceName(relativePath || path.basename(repoPath));
-    const buildStrategy = (await exists(path.join(serviceDir, 'Dockerfile')))
-      ? 'dockerfile'
-      : 'buildpacks';
-    services.push({ name, relativePath: relativePath || '.', buildStrategy });
+    const hasDockerfile = await exists(path.join(serviceDir, 'Dockerfile'));
+    const buildStrategy = hasDockerfile ? 'dockerfile' : 'buildpacks';
+    const buildContext =
+      hasDockerfile && relativePath
+        ? await detectDockerfileBuildContext(serviceDir, relativePath)
+        : 'own';
+    services.push({ name, relativePath: relativePath || '.', buildStrategy, buildContext });
   }
 
   return services;
@@ -189,7 +207,8 @@ async function detectBackingServices(
         existing.detectedVia += `; ${detailText}`;
         existing.sources.push({ service: service.name, envVarName: signal.envVarName });
       } else {
-        const autoWireable = signal.type === 'postgres' || signal.type === 'redis';
+        const autoWireable =
+          signal.type === 'postgres' || signal.type === 'redis' || signal.type === 'mysql';
         byType.set(signal.type, {
           type: signal.type,
           autoWireable,
