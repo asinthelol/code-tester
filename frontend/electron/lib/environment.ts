@@ -2,10 +2,11 @@ import { dialog } from 'electron';
 import type { BrowserWindow, OpenDialogOptions } from 'electron';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import fs from 'node:fs/promises';
-import { parse } from 'yaml';
 import type { EnvironmentEvent, IntegrationEnvironment } from '../../src/shared/lib/types.ts';
 import { lineBuffered } from './ndjson.ts';
+import { parseEnvironmentConfig } from './parseEnvironmentConfig.ts';
+
+export { parseEnvironmentConfig };
 
 
 
@@ -33,19 +34,6 @@ export async function importEnvironment(
   }
 
   return parseEnvironmentConfig(filePaths[0]);
-}
-
-export async function parseEnvironmentConfig(
-  configPath: string
-): Promise<IntegrationEnvironment> {
-  const content = await fs.readFile(configPath, 'utf-8');
-  const parsed = parse(content) as { name?: string; services?: Record<string, unknown> };
-
-  return {
-    path: configPath,
-    name: parsed.name ?? configPath,
-    services: Object.keys(parsed.services ?? {}),
-  };
 }
 
 function friendlyDockerError(error: NodeJS.ErrnoException): string {
