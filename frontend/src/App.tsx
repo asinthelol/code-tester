@@ -43,6 +43,7 @@ function App() {
   const [environments, setEnvironments] = useState<IntegrationEnvironment[]>([]);
   const [activeEnvironmentPath, setActiveEnvironmentPath] = useState<string | null>(null);
   const [repos, setRepos] = useState<Repo[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [activeSection, setActiveSection] = useState('Files');
   const [targetPickerFor, setTargetPickerFor] = useState<string | null>(null);
   const [runSetupError, setRunSetupError] = useState<string | null>(null);
@@ -57,6 +58,29 @@ function App() {
   const [environmentLog, setEnvironmentLog] = useState<string[]>([]);
   const [suiteRuns, setSuiteRuns] = useState<Record<string, SuiteRun>>({});
   const runIdToTestId = useRef<Record<string, string>>({});
+
+  // Restore what was there last launch.
+  // Guarded by `hydrated` so the initial empty arrays don't get saved over
+  // whatever loadState() is about to bring back.
+  useEffect(() => {
+    let cancelled = false;
+    window.electron.loadState().then((state) => {
+      if (cancelled) return;
+      setFiles(state.files);
+      setTests(state.tests);
+      setEnvironments(state.environments);
+      setRepos(state.repos);
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    void window.electron.saveState({ files, tests, environments, repos });
+  }, [hydrated, files, tests, environments, repos]);
 
   useEffect(() => {
     const unsubscribe = window.electron.onEnvironmentEvent((event) => {
