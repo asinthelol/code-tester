@@ -3,7 +3,6 @@ import type { editor } from 'monaco-editor';
 import CodeEditor from './components/Editor/CodeEditor/CodeEditor';
 import EnvironmentDetail from './components/Environments/EnvironmentDetail/EnvironmentDetail';
 import Sidebar from './components/Sidebar/Sidebar';
-import DashboardPanel from './components/Sidebar/DashboardPanel/DashboardPanel';
 import EnvironmentsPanel from './components/Sidebar/EnvironmentsPanel/EnvironmentsPanel';
 import FilesPanel from './components/Sidebar/FilesPanel/FilesPanel';
 import ReposPanel from './components/Sidebar/ReposPanel/ReposPanel';
@@ -323,7 +322,6 @@ function App() {
     <div className="flex h-svh">
       <Sidebar activeItem={activeSection} onNavigate={setActiveSection} />
 
-      {activeSection === 'Dashboard' && <DashboardPanel />}
       {activeSection === 'Repos' && (
         <ReposPanel
           repos={repos}

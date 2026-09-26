@@ -1,14 +1,5 @@
 import type { ReactNode } from 'react';
 
-const dashboardIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-    <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" />
-    <rect x="13" y="3.5" width="7.5" height="4.5" rx="1.5" />
-    <rect x="13" y="10.5" width="7.5" height="10" rx="1.5" />
-    <rect x="3.5" y="13.5" width="7.5" height="7" rx="1.5" />
-  </svg>
-);
-
 const reposIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
     <path
@@ -67,7 +58,6 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { title: 'Dashboard', icon: dashboardIcon },
   { title: 'Repos', icon: reposIcon },
   { title: 'Files', icon: filesIcon },
   { title: 'Tests', icon: testsIcon },
