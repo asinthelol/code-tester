@@ -22,9 +22,10 @@ export function attachLocalWorker(
 ): void {
   detachLocalWorker();
 
-  const child = spawn('node', [bundlePath(), suiteRoot], {
+  const child = spawn(process.execPath, [bundlePath(), suiteRoot], {
     shell: false,
     stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
   });
   worker = child;
 
