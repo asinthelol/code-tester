@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MdOutlineNotifications } from 'react-icons/md';
 import Button from '../ui/Button/Button';
 import AddButton from './AddButton/AddButton';
 import AddTestModal from './AddTestModal/AddTestModal';
@@ -21,17 +22,6 @@ const ADD_BUTTON_LABELS: Record<string, string> = {
   Tests: 'Add Test',
   Environments: 'Add Environment',
 };
-
-const BellIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-5">
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M6 9.5a6 6 0 1 1 12 0c0 3.7 1.06 5 1.5 5.5H4.5c.44-.5 1.5-1.8 1.5-5.5Z"
-    />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M10 18a2 2 0 0 0 4 0" />
-  </svg>
-);
 
 function Toolbar({
   activeSection,
@@ -78,7 +68,7 @@ function Toolbar({
       <div className="flex items-center justify-end gap-8">
         {addButtonLabel && <AddButton label={addButtonLabel} onClick={handleAdd} />}
         <Button aria-label="Notifications" className="size-12 justify-center">
-          <BellIcon />
+          <MdOutlineNotifications className="size-5" />
         </Button>
       </div>
 

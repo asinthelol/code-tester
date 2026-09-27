@@ -1,3 +1,4 @@
+import { MdOutlineDelete, MdOutlineDns } from 'react-icons/md';
 import type { IntegrationEnvironment } from '../../../shared/lib/types';
 
 interface EnvironmentsPanelProps {
@@ -29,17 +30,7 @@ function EnvironmentsPanel({ environments, activePath, onSelect, onDelete }: Env
               title={env.path}
               className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-3 text-left text-sm"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                className="size-4 shrink-0"
-              >
-                <rect x="3.5" y="3.5" width="17" height="5.5" rx="1.5" />
-                <rect x="3.5" y="10.75" width="17" height="5.5" rx="1.5" />
-                <rect x="3.5" y="18" width="17" height="2.5" rx="1.25" />
-              </svg>
+              <MdOutlineDns className="size-4 shrink-0" />
               <span className="truncate">{env.name}</span>
             </button>
 
@@ -50,19 +41,7 @@ function EnvironmentsPanel({ environments, activePath, onSelect, onDelete }: Env
               aria-label={`Delete ${env.name}`}
               className="flex shrink-0 items-center justify-center p-2 text-neutral-400 opacity-0 hover:text-red-600 group-hover:opacity-100 dark:hover:text-red-500"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                className="size-4"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4.75 7.25h14.5M9.75 7.25V5a1 1 0 0 1 1-1h2.5a1 1 0 0 1 1 1v2.25M18 7.25V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V7.25M10 11v6M14 11v6"
-                />
-              </svg>
+              <MdOutlineDelete className="size-4" />
             </button>
           </li>
         ))}
