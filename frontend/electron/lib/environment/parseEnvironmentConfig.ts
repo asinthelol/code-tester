@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import { parse } from 'yaml';
-import type { IntegrationEnvironment } from '../../shared/types.ts';
+import type { IntegrationEnvironment } from '../../../shared/types.ts';
 
 export async function parseEnvironmentConfig(
   configPath: string

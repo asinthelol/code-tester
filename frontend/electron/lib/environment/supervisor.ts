@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import type { Command, Event } from '../../../protocol/v1/typescript/index.ts';
-import { lineBuffered } from './ndjson.ts';
+import type { Command, Event } from '../../../../protocol/v1/typescript/index.ts';
+import { lineBuffered } from '../ndjson.ts';
 
 
 

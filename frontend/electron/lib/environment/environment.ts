@@ -2,8 +2,8 @@ import { dialog } from 'electron';
 import type { BrowserWindow, OpenDialogOptions } from 'electron';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
-import type { EnvironmentEvent, IntegrationEnvironment } from '../../shared/types.ts';
-import { lineBuffered } from './ndjson.ts';
+import type { EnvironmentEvent, IntegrationEnvironment } from '../../../shared/types.ts';
+import { lineBuffered } from '../ndjson.ts';
 import { parseEnvironmentConfig } from './parseEnvironmentConfig.ts';
 
 export { parseEnvironmentConfig };
