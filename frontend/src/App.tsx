@@ -367,13 +367,15 @@ function App() {
       setRunSetupError(null);
 
       const extension = getExtension(targetFile.path);
-      if (extension === 'py') {
-        await window.electron.runStart({
+      if (extension === 'cpp' || extension === 'hpp') {
+        const runId = startSuiteRun(activeTest.id);
+        await window.electron.runCppTarget({
+          runId,
+          testName: activeTest.name,
+          target,
           sourceContent: targetFile.content,
-          sourceExtension: extension,
-          functionName: target.functionName,
-          argsJson: target.argsJson,
-          expectedJson: target.expectedJson,
+          extension,
+          environmentPath: activeTest.environmentPath,
         });
         return;
       }
@@ -403,6 +405,16 @@ function App() {
     if (!activeTest) return;
     const run = suiteRuns[activeTest.id];
     if (!run) return;
+
+    if (activeTest.spec.kind === 'target' && activeTest.spec.target) {
+      const target = activeTest.spec.target;
+      const targetFile = files.find((f) => f.path === target.filePath);
+      const extension = targetFile ? getExtension(targetFile.path) : '';
+      if (extension === 'cpp' || extension === 'hpp') {
+        await window.electron.cancelCppTarget();
+        return;
+      }
+    }
 
     if (activeTest.environmentPath) {
       await window.electron.supervisorCancel(run.runId, activeTest.environmentPath);

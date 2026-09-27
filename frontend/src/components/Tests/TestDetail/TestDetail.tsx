@@ -1,6 +1,4 @@
-import RunOutputPanel from '../RunOutputPanel/RunOutputPanel';
 import SuiteResultsPanel from '../SuiteResultsPanel/SuiteResultsPanel';
-import { getExtension } from '../../../shared/lib/path';
 import type { EnvironmentStatus, IntegrationEnvironment, SuiteRun, Test } from '../../../shared/lib/types';
 
 interface TestDetailProps {
@@ -47,16 +45,9 @@ function TestDetail({
   onStopEnvironment,
 }: TestDetailProps) {
 
-  // Python targets have no worker yet, so they still run through runTest.ts
-  // regardless of any environment attached to the test.
-  const isPythonTarget =
-    test.spec.kind === 'target' &&
-    !!test.spec.target &&
-    getExtension(test.spec.target.filePath) === 'py';
-  const usesSuiteProtocol = !isPythonTarget;
   const environmentBusy = environmentStatus === 'starting' || environmentStatus === 'stopping';
   const environmentReady = environmentStatus === 'ready';
-  const canRunSuite = !usesSuiteProtocol || !environment || environmentReady;
+  const canRunSuite = !environment || environmentReady;
   const isRunning = suiteRun?.status === 'running';
 
   return (
@@ -69,11 +60,11 @@ function TestDetail({
           {runSetupError && <span className="text-xs text-red-500">{runSetupError}</span>}
           <button
             type="button"
-            onClick={usesSuiteProtocol && isRunning ? onCancel : onRun}
+            onClick={isRunning ? onCancel : onRun}
             disabled={!canRunSuite}
             className="rounded-md bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
-            {usesSuiteProtocol && isRunning ? 'Cancel' : 'Run'}
+            {isRunning ? 'Cancel' : 'Run'}
           </button>
         </div>
       </div>
@@ -140,9 +131,7 @@ function TestDetail({
         </div>
       )}
 
-      {isPythonTarget ? (
-        <RunOutputPanel />
-      ) : environment && !environmentReady ? (
+      {environment && !environmentReady ? (
         <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
           Start the environment to run this test
         </div>
