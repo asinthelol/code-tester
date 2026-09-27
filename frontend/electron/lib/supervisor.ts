@@ -46,8 +46,8 @@ function sendCommand(command: Command): void {
   attached?.stdin?.write(`${JSON.stringify(command)}\n`);
 }
 
-export function executeSuite(runId: string, entryPoint: string): void {
-  sendCommand({ protocolVersion: 1, runId, type: 'run', adapter: 'node', entryPoint });
+export function executeSuite(runId: string, entryPoint: string, adapter: string = 'node'): void {
+  sendCommand({ protocolVersion: 1, runId, type: 'run', adapter, entryPoint });
 }
 
 export function cancelSuite(
