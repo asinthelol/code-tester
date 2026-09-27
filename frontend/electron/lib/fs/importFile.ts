@@ -2,7 +2,7 @@ import { dialog } from 'electron';
 import type { BrowserWindow, OpenDialogOptions } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { ImportedFile } from '../../shared/types.ts';
+import type { ImportedFile } from '../../../shared/types.ts';
 
 const dialogOptions: OpenDialogOptions = {
   properties: ['openFile'],
