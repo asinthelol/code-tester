@@ -6,10 +6,10 @@ import {
   clearLocalCancelGrace,
   detachLocalWorker,
   sendLocalCommand,
-} from '../lib/localWorker.ts';
-import { executeSuite } from '../lib/supervisor.ts';
-import { synthesizeDockerTarget, synthesizeLocalTarget, buildPythonSource } from '../lib/synthesizeTarget.ts';
-import { cancelCppTarget, runCppTarget } from '../lib/runCppTarget.ts';
+} from '../lib/environment/localWorker.ts';
+import { executeSuite } from '../lib/environment/supervisor.ts';
+import { synthesizeDockerTarget, synthesizeLocalTarget, buildPythonSource } from '../lib/suite/synthesizeTarget.ts';
+import { cancelCppTarget, runCppTarget } from '../lib/suite/runCppTarget.ts';
 import { IPC_CHANNELS } from '../../shared/electronApi.ts';
 import { adapterForExtension, isTerminalSuiteEvent } from './shared.ts';
 import { pendingCleanups } from './supervisor.ts';

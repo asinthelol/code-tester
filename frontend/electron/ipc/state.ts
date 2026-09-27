@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { loadState, saveState } from '../lib/appState.ts';
+import { loadState, saveState } from '../lib/fs/appState.ts';
 import { IPC_CHANNELS } from '../../shared/electronApi.ts';
 import type { PersistedState } from '../../shared/types.ts';
 

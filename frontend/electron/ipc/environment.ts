@@ -4,8 +4,8 @@ import {
   importEnvironment,
   startEnvironment,
   stopEnvironment,
-} from '../lib/environment.ts';
-import { attachSupervisor, detachSupervisor } from '../lib/supervisor.ts';
+} from '../lib/environment/environment.ts';
+import { attachSupervisor, detachSupervisor } from '../lib/environment/supervisor.ts';
 import { IPC_CHANNELS } from '../../shared/electronApi.ts';
 import { isTerminalSuiteEvent } from './shared.ts';
 import { runPendingCleanup } from './supervisor.ts';

@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron';
-import { analyzeRepo } from '../lib/repoAnalyzer.ts';
-import { pickRepoDirectory } from '../lib/pickRepoDirectory.ts';
-import { cancelScaffold, scaffoldRepo } from '../lib/scaffoldRepo.ts';
+import { analyzeRepo } from '../lib/repo/repoAnalyzer.ts';
+import { pickRepoDirectory } from '../lib/fs/pickRepoDirectory.ts';
+import { cancelScaffold, scaffoldRepo } from '../lib/repo/scaffoldRepo.ts';
 import { IPC_CHANNELS } from '../../shared/electronApi.ts';
 import type { ScaffoldRequest } from '../../shared/types.ts';
 

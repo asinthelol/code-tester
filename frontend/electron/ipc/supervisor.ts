@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { cancelSuite, executeSuite } from '../lib/supervisor.ts';
+import { cancelSuite, executeSuite } from '../lib/environment/supervisor.ts';
 import { IPC_CHANNELS } from '../../shared/electronApi.ts';
 import { adapterForExtension } from './shared.ts';
 import path from 'node:path';

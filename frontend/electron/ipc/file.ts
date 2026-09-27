@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron';
-import { importFile } from '../lib/importFile.ts';
-import { saveFile } from '../lib/saveFile.ts';
-import { deleteFileFromDisk } from '../lib/deleteFile.ts';
+import { importFile } from '../lib/fs/importFile.ts';
+import { saveFile } from '../lib/fs/saveFile.ts';
+import { deleteFileFromDisk } from '../lib/fs/deleteFile.ts';
 import { IPC_CHANNELS } from '../../shared/electronApi.ts';
 
 export function registerFileHandlers(): void {

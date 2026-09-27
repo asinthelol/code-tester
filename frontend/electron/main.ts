@@ -6,11 +6,11 @@ import { registerRepoHandlers } from './ipc/repo.ts';
 import { registerSupervisorHandlers } from './ipc/supervisor.ts';
 import { registerEnvironmentHandlers, getReadyEnvironments } from './ipc/environment.ts';
 import { registerSuiteHandlers } from './ipc/suite.ts';
-import { cancelCppTarget } from './lib/runCppTarget.ts';
-import { detachSupervisor } from './lib/supervisor.ts';
-import { detachLocalWorker } from './lib/localWorker.ts';
-import { cancelScaffold } from './lib/scaffoldRepo.ts';
-import { stopEnvironment } from './lib/environment.ts';
+import { cancelCppTarget } from './lib/suite/runCppTarget.ts';
+import { detachSupervisor } from './lib/environment/supervisor.ts';
+import { detachLocalWorker } from './lib/environment/localWorker.ts';
+import { cancelScaffold } from './lib/repo/scaffoldRepo.ts';
+import { stopEnvironment } from './lib/environment/environment.ts';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 declare const MAIN_WINDOW_VITE_NAME: string;
