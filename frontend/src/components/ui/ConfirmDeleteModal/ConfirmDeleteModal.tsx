@@ -31,7 +31,7 @@ function ConfirmDeleteModal({
   };
 
   return (
-    <Modal open={open} onClose={handleCancel} title="Delete">
+    <Modal open={open} title="Delete">
       <div className="flex flex-col gap-3">
         <p className="text-sm text-neutral-700 dark:text-neutral-300">
           Remove <span className="font-medium text-neutral-900 dark:text-neutral-100">{itemLabel}</span>?

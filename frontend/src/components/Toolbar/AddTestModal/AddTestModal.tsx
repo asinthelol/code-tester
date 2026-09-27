@@ -46,7 +46,7 @@ function AddTestModal({ open, onClose, environments, onAdd }: AddTestModalProps)
   };
 
   return (
-    <Modal open={open} onClose={handleClose} title="Add Test">
+    <Modal open={open} title="Add Test">
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm text-neutral-700 dark:text-neutral-300">
           Name

@@ -71,11 +71,18 @@ function EnvironmentDetail({ environment, status, log, onStart, onStop }: Enviro
         </ul>
       </div>
 
-      <div ref={logRef} className="min-h-0 flex-1 overflow-auto bg-[#171717] px-4 py-3 font-mono text-xs text-neutral-300">
+      <div
+        ref={logRef}
+        className="min-h-0 min-w-0 flex-1 overflow-auto bg-[#171717] px-4 py-3 font-mono text-xs text-neutral-300"
+      >
         {log.length === 0 ? (
           <p className="text-neutral-500">No output yet.</p>
         ) : (
-          log.map((line, index) => <div key={index}>{line}</div>)
+          log.map((line, index) => (
+            <div key={index} className="whitespace-pre">
+              {line}
+            </div>
+          ))
         )}
       </div>
     </div>

@@ -3,6 +3,7 @@ import type { editor } from 'monaco-editor';
 import CodeEditor from './components/Editor/CodeEditor/CodeEditor';
 import ConfirmDeleteModal from './components/ui/ConfirmDeleteModal/ConfirmDeleteModal';
 import EnvironmentDetail from './components/Environments/EnvironmentDetail/EnvironmentDetail';
+import RepoDetail from './components/Repos/RepoDetail/RepoDetail';
 import Sidebar from './components/Sidebar/Sidebar';
 import EnvironmentsPanel from './components/Sidebar/EnvironmentsPanel/EnvironmentsPanel';
 import FilesPanel from './components/Sidebar/FilesPanel/FilesPanel';
@@ -234,7 +235,6 @@ function App() {
     const repo = repos.find((r) => r.path === repoPath);
     if (!repo?.environmentPath) return;
     setActiveEnvironmentPath(repo.environmentPath);
-    setActiveSection('Environments');
   };
 
   const handleDeleteFile = async (file: ImportedFile, deleteFromDisk: boolean) => {
@@ -317,6 +317,7 @@ function App() {
 
   const activeFile = files.find((f) => f.path === activePath) ?? null;
   const activeTest = tests.find((t) => t.id === activeTestId) ?? null;
+  const activeRepo = repos.find((r) => r.environmentPath === activeEnvironmentPath) ?? null;
   const activeEnvironment =
     environments.find((e) => e.path === activeEnvironmentPath) ?? null;
   const displayedEnvironmentStatus =
@@ -430,7 +431,7 @@ function App() {
       {activeSection === 'Repos' && (
         <ReposPanel
           repos={repos}
-          activePath={repos.find((r) => r.environmentPath === activeEnvironmentPath)?.path ?? null}
+          activePath={activeRepo?.path ?? null}
           onSelect={handleSelectRepo}
           onDelete={(repo) => setPendingDelete({ kind: 'repo', item: repo })}
         />
@@ -507,6 +508,19 @@ function App() {
           ) : (
             <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
               Add a test to get started
+            </div>
+          )
+        ) : activeSection === 'Repos' ? (
+          activeRepo ? (
+            <RepoDetail
+              repo={activeRepo}
+              environment={activeEnvironment}
+              environmentStatus={displayedEnvironmentStatus}
+              onManageEnvironment={() => setActiveSection('Environments')}
+            />
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
+              Select a repo to view its details
             </div>
           )
         ) : activeFile ? (
