@@ -63,6 +63,7 @@ const createWindow = () => {
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
     },
+    icon: path.join(__dirname, '../renderer/public/icon.ico'),
   });
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
