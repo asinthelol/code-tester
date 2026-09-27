@@ -2,7 +2,6 @@ import { app, BrowserWindow, Menu, ipcMain } from 'electron';
 import path from 'node:path';
 import { importFile } from './lib/importFile.ts';
 import { saveFile } from './lib/saveFile.ts';
-import { runTest, stopTest } from './lib/runTest.ts';
 import {
   cancelStart,
   importEnvironment,
@@ -22,7 +21,8 @@ import {
   detachLocalWorker,
   sendLocalCommand,
 } from './lib/localWorker.ts';
-import { synthesizeDockerTarget, synthesizeLocalTarget } from './lib/synthesizeTarget.ts';
+import { synthesizeDockerTarget, synthesizeLocalTarget, buildPythonSource } from './lib/synthesizeTarget.ts';
+import { cancelCppTarget, runCppTarget } from './lib/runCppTarget.ts';
 import { analyzeRepo } from './lib/repoAnalyzer.ts';
 import { pickRepoDirectory } from './lib/pickRepoDirectory.ts';
 import { cancelScaffold, scaffoldRepo } from './lib/scaffoldRepo.ts';
@@ -30,7 +30,6 @@ import { loadState, saveState } from './lib/appState.ts';
 import { deleteFileFromDisk } from './lib/deleteFile.ts';
 import type {
   PersistedState,
-  RunRequest,
   ScaffoldRequest,
   TargetRunRequest,
 } from '../src/shared/lib/types.ts';
@@ -38,6 +37,10 @@ import type { Event as SuiteEvent } from '../../protocol/v1/typescript/index.ts'
 
 function isTerminalSuiteEvent(event: SuiteEvent): boolean {
   return event.type === 'run.completed' || event.type === 'run.failed' || event.type === 'run.aborted';
+}
+
+function adapterForExtension(extension: string): string {
+  return extension.toLowerCase() === 'py' ? 'python' : 'node';
 }
 
 const pendingCleanups = new Map<string, () => Promise<void>>();
@@ -69,12 +72,6 @@ ipcMain.handle('file:save', (_event, filePath: string, content: string) =>
   saveFile(filePath, content)
 );
 
-ipcMain.handle('run:start', (event, request: RunRequest) =>
-  runTest(request, (runEvent) => event.sender.send('run:event', runEvent))
-);
-
-ipcMain.handle('run:stop', () => stopTest());
-
 ipcMain.handle('environment:import', (event) =>
   importEnvironment(BrowserWindow.fromWebContents(event.sender))
 );
@@ -105,7 +102,7 @@ ipcMain.handle('environment:stop', (event, configPath: string) => {
 });
 
 ipcMain.handle('supervisor:execute', (_event, runId: string, entryPoint: string) =>
-  executeSuite(runId, entryPoint)
+  executeSuite(runId, entryPoint, adapterForExtension(path.extname(entryPoint).slice(1)))
 );
 
 ipcMain.handle('supervisor:cancel', (event, runId: string, configPath: string) =>
@@ -122,6 +119,8 @@ ipcMain.handle('supervisor:cancel', (event, runId: string, configPath: string) =
 
 ipcMain.handle('suite:runTarget', async (event, request: TargetRunRequest) => {
   const { runId, testName, target, sourceContent, extension, environmentPath } = request;
+  const adapter = adapterForExtension(extension);
+  const buildSource = extension === 'py' ? buildPythonSource : undefined;
 
   if (environmentPath) {
     const synthesized = await synthesizeDockerTarget(
@@ -129,14 +128,15 @@ ipcMain.handle('suite:runTarget', async (event, request: TargetRunRequest) => {
       testName,
       target,
       extension,
-      environmentPath
+      environmentPath,
+      buildSource
     );
     pendingCleanups.set(runId, synthesized.cleanup);
-    executeSuite(runId, synthesized.entryPoint);
+    executeSuite(runId, synthesized.entryPoint, adapter);
     return;
   }
 
-  const synthesized = await synthesizeLocalTarget(sourceContent, testName, target, extension);
+  const synthesized = await synthesizeLocalTarget(sourceContent, testName, target, extension, buildSource);
   attachLocalWorker(synthesized.suiteRoot, (workerEvent) => {
     event.sender.send('supervisor:event', workerEvent);
     if (isTerminalSuiteEvent(workerEvent)) {
@@ -145,8 +145,14 @@ ipcMain.handle('suite:runTarget', async (event, request: TargetRunRequest) => {
       void synthesized.cleanup();
     }
   });
-  sendLocalCommand({ protocolVersion: 1, runId, type: 'run', adapter: 'node', entryPoint: synthesized.entryPoint });
+  sendLocalCommand({ protocolVersion: 1, runId, type: 'run', adapter, entryPoint: synthesized.entryPoint });
 });
+
+ipcMain.handle('suite:runCppTarget', (event, request: TargetRunRequest) =>
+  runCppTarget(request, (suiteEvent) => event.sender.send('supervisor:event', suiteEvent))
+);
+
+ipcMain.handle('suite:cancelCppTarget', () => cancelCppTarget());
 
 ipcMain.handle('suite:runLocal', (event, runId: string, entryPoint: string) => {
   attachLocalWorker(process.cwd(), (workerEvent) => {
@@ -156,7 +162,8 @@ ipcMain.handle('suite:runLocal', (event, runId: string, entryPoint: string) => {
       detachLocalWorker();
     }
   });
-  sendLocalCommand({ protocolVersion: 1, runId, type: 'run', adapter: 'node', entryPoint });
+  const adapter = adapterForExtension(path.extname(entryPoint).slice(1));
+  sendLocalCommand({ protocolVersion: 1, runId, type: 'run', adapter, entryPoint });
 });
 
 ipcMain.handle('suite:cancelLocal', (event, runId: string) =>
@@ -204,7 +211,7 @@ app.on('before-quit', (event) => {
   event.preventDefault();
   quitting = true;
 
-  stopTest();
+  cancelCppTarget();
   detachSupervisor();
   detachLocalWorker();
   cancelScaffold();
