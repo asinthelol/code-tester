@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { editor } from 'monaco-editor';
 import CodeEditor from './components/Editor/CodeEditor/CodeEditor';
 import ConfirmDeleteModal from './components/ui/ConfirmDeleteModal/ConfirmDeleteModal';
@@ -12,409 +12,104 @@ import TestsPanel from './components/Sidebar/TestsPanel/TestsPanel';
 import SelectFunctionModal from './components/Tests/SelectFunctionModal/SelectFunctionModal';
 import TestDetail from './components/Tests/TestDetail/TestDetail';
 import Toolbar from './components/Toolbar/Toolbar';
-import { getExtension } from './shared/lib/path';
-import type { EnvironmentStatus, PendingDelete, SuiteRun } from './shared/lib/types';
-import type {
-  ImportedFile,
-  IntegrationEnvironment,
-  Repo,
-  Test,
-  TestTarget,
-} from '../shared/types';
+import { usePersistedWorkspace } from './shared/hooks/usePersistedWorkspace';
+import { useEnvironmentRuntime } from './shared/hooks/useEnvironmentRuntime';
+import { useSuiteRuns } from './shared/hooks/useSuiteRuns';
+import { useFileActions } from './shared/hooks/useFileActions';
+import { useEnvironmentActions } from './shared/hooks/useEnvironmentActions';
+import { useRepoActions } from './shared/hooks/useRepoActions';
+import { useTestActions } from './shared/hooks/useTestActions';
+import { useTestExecution } from './shared/hooks/useTestExecution';
+import type { EnvironmentStatus, PendingDelete } from './shared/lib/types';
 
-function upsertByPath<T extends { path: string }>(list: T[], item: T) {
-  const existingIndex = list.findIndex((f) => f.path === item.path);
-  if (existingIndex === -1) {
-    return [...list, item];
-  }
-  const next = [...list];
-  next[existingIndex] = item;
-  return next;
-}
 
-function replaceByPath<T extends { path: string }>(list: T[], oldPath: string, updated: T) {
-  return list.map((item) => (item.path === oldPath ? updated : item));
-}
 
 function App() {
-  const [files, setFiles] = useState<ImportedFile[]>([]);
+  const workspace = usePersistedWorkspace();
+  const environmentRuntime = useEnvironmentRuntime();
+  const suiteRunsApi = useSuiteRuns();
+
   const [activePath, setActivePath] = useState<string | null>(null);
-  const [tests, setTests] = useState<Test[]>([]);
   const [activeTestId, setActiveTestId] = useState<string | null>(null);
-  const [environments, setEnvironments] = useState<IntegrationEnvironment[]>([]);
   const [activeEnvironmentPath, setActiveEnvironmentPath] = useState<string | null>(null);
-  const [repos, setRepos] = useState<Repo[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [activeSection, setActiveSection] = useState('Files');
   const [targetPickerFor, setTargetPickerFor] = useState<string | null>(null);
-  const [runSetupError, setRunSetupError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
-  // Environment/supervisor connections live here rather than in the
-  // components that render it. Otherwise navigating away and back would
-  // unmount those components and lose track of what's actually still running.
-  // Man I gotta shorten this file.
-  const [runningEnvironmentPath, setRunningEnvironmentPath] = useState<string | null>(null);
-  const [environmentStatus, setEnvironmentStatus] = useState<EnvironmentStatus>('idle');
-  const [environmentLog, setEnvironmentLog] = useState<string[]>([]);
-  const [suiteRuns, setSuiteRuns] = useState<Record<string, SuiteRun>>({});
-  const runIdToTestId = useRef<Record<string, string>>({});
+  const fileActions = useFileActions(workspace.setFiles, activePath, setActivePath);
+  const environmentActions = useEnvironmentActions(
+    workspace.setEnvironments,
+    workspace.setTests,
+    activeEnvironmentPath,
+    setActiveEnvironmentPath,
+    environmentRuntime
+  );
+  const repoActions = useRepoActions(
+    workspace.repos,
+    workspace.setRepos,
+    workspace.environments,
+    setActiveEnvironmentPath,
+    setActiveSection,
+    environmentActions
+  );
+  const testActions = useTestActions(
+    workspace.setTests,
+    activeTestId,
+    setActiveTestId,
+    targetPickerFor,
+    setTargetPickerFor,
+    setActiveSection,
+    suiteRunsApi.removeSuiteRun
+  );
 
-  // Restore what was there last launch.
-  // Guarded by `hydrated` so the initial empty arrays don't get saved over
-  // whatever loadState() is about to bring back.
-  useEffect(() => {
-    let cancelled = false;
-    window.electron.loadState().then((state) => {
-      if (cancelled) return;
-      setFiles(state.files);
-      setTests(state.tests);
-      setEnvironments(state.environments);
-      setRepos(state.repos);
-      setHydrated(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const activeFile = workspace.files.find((f) => f.path === activePath) ?? null;
+  const activeTest = workspace.tests.find((t) => t.id === activeTestId) ?? null;
+  const activeRepo = workspace.repos.find((r) => r.environmentPath === activeEnvironmentPath) ?? null;
+  const activeEnvironment =
+    workspace.environments.find((e) => e.path === activeEnvironmentPath) ?? null;
+  const displayedEnvironmentStatus =
+    activeEnvironmentPath && activeEnvironmentPath === environmentRuntime.runningEnvironmentPath
+      ? environmentRuntime.environmentStatus
+      : 'idle';
 
-  useEffect(() => {
-    if (!hydrated) return;
-    void window.electron.saveState({ files, tests, environments, repos });
-  }, [hydrated, files, tests, environments, repos]);
+  const activeTestEnvironment =
+    workspace.environments.find((e) => e.path === activeTest?.environmentPath) ?? null;
+  const activeTestEnvironmentStatus: EnvironmentStatus =
+    activeTest?.environmentPath && activeTest.environmentPath === environmentRuntime.runningEnvironmentPath
+      ? environmentRuntime.environmentStatus
+      : 'idle';
 
-  useEffect(() => {
-    const unsubscribe = window.electron.onEnvironmentEvent((event) => {
-      switch (event.type) {
-        case 'compose.status':
-          setEnvironmentLog((prev) => [...prev, event.message]);
-          break;
-        case 'environment.ready':
-          setEnvironmentStatus('ready');
-          break;
-        case 'environment.failed':
-          setEnvironmentStatus('failed');
-          setEnvironmentLog((prev) => [
-            ...prev,
-            `Failed (${event.reason})${event.message ? `: ${event.message}` : ''}`,
-          ]);
-          break;
-        case 'environment.stopped':
-          setEnvironmentStatus('stopped');
-          break;
-      }
-    });
-    return unsubscribe;
-  }, []);
+  const testExecution = useTestExecution(
+    activeTest,
+    workspace.files,
+    suiteRunsApi.suiteRuns,
+    suiteRunsApi.startSuiteRun,
+    setTargetPickerFor
+  );
 
-  useEffect(() => {
-    const unsubscribe = window.electron.onSupervisorEvent((event) => {
-      const testId = runIdToTestId.current[event.runId];
-      if (!testId) return;
-
-      setSuiteRuns((prev) => {
-        const run = prev[testId];
-        if (!run) return prev;
-
-        switch (event.type) {
-          case 'suite.discovered': {
-            const testOrder = event.tests.map((t) => t.id);
-            const tests = Object.fromEntries(
-              event.tests.map((t) => [t.id, { name: t.name, status: 'pending' as const, output: [] }])
-            );
-            return { ...prev, [testId]: { ...run, testOrder, tests } };
-          }
-          case 'test.started':
-            return {
-              ...prev,
-              [testId]: {
-                ...run,
-                tests: {
-                  ...run.tests,
-                  [event.testId]: { ...run.tests[event.testId], status: 'running' },
-                },
-              },
-            };
-          case 'test.stdout':
-          case 'test.stderr':
-            return {
-              ...prev,
-              [testId]: {
-                ...run,
-                tests: {
-                  ...run.tests,
-                  [event.testId]: {
-                    ...run.tests[event.testId],
-                    output: [...(run.tests[event.testId]?.output ?? []), event.chunk],
-                  },
-                },
-              },
-            };
-          case 'test.finished':
-            return {
-              ...prev,
-              [testId]: {
-                ...run,
-                tests: {
-                  ...run.tests,
-                  [event.testId]: {
-                    ...run.tests[event.testId],
-                    status: event.status,
-                    durationMs: event.durationMs,
-                    error: event.error,
-                  },
-                },
-              },
-            };
-          case 'run.completed':
-            return { ...prev, [testId]: { ...run, status: 'completed' } };
-          case 'run.failed':
-            return { ...prev, [testId]: { ...run, status: 'failed', failedReason: event.reason } };
-          case 'run.aborted':
-            return { ...prev, [testId]: { ...run, status: 'aborted' } };
-          default:
-            return prev;
-        }
-      });
-    });
-    return unsubscribe;
-  }, []);
-
-  const handleStartEnvironment = async (configPath: string) => {
-    setRunningEnvironmentPath(configPath);
-    setEnvironmentStatus('starting');
-    setEnvironmentLog([]);
-    await window.electron.environmentStart(configPath);
-  };
-
-  const handleStopEnvironment = async (configPath: string) => {
-    setEnvironmentStatus('stopping');
-    await window.electron.environmentStop(configPath);
-    setRunningEnvironmentPath(null);
-  };
-
-  const handleImport = (file: ImportedFile) => {
-    setFiles((prev) => upsertByPath(prev, file));
-    setActivePath(file.path);
-  };
-
-  const handleAddTest = (test: {
-    name: string;
-    environmentPath: string | null;
-    spec: Test['spec'];
-  }) => {
-    const id = crypto.randomUUID();
-    setTests((prev) => [
-      ...prev,
-      { id, name: test.name, environmentPath: test.environmentPath, spec: test.spec },
-    ]);
-    setActiveTestId(id);
-  };
-
-  const handleAddEnvironment = (environment: IntegrationEnvironment) => {
-    setEnvironments((prev) => upsertByPath(prev, environment));
-    setActiveEnvironmentPath(environment.path);
-  };
-
-  const handleAddRepo = ({ repo, environment }: { repo: Repo; environment: IntegrationEnvironment }) => {
-    setEnvironments((prev) => upsertByPath(prev, environment));
-    setRepos((prev) => upsertByPath(prev, repo));
-    setActiveEnvironmentPath(environment.path);
-    setActiveSection('Environments');
-  };
-
-  const handleSelectRepo = (repoPath: string) => {
-    const repo = repos.find((r) => r.path === repoPath);
-    if (!repo?.environmentPath) return;
-    setActiveEnvironmentPath(repo.environmentPath);
-  };
-
-  const handleDeleteFile = async (file: ImportedFile, deleteFromDisk: boolean) => {
-    if (deleteFromDisk) await window.electron.deleteFileFromDisk(file.path);
-    setFiles((prev) => prev.filter((f) => f.path !== file.path));
-    if (activePath === file.path) setActivePath(null);
-  };
-
-  const handleDeleteTest = (test: Test) => {
-    setTests((prev) => prev.filter((t) => t.id !== test.id));
-    setSuiteRuns((prev) => {
-      if (!(test.id in prev)) return prev;
-      const next = { ...prev };
-      delete next[test.id];
-      return next;
-    });
-    if (activeTestId === test.id) setActiveTestId(null);
-  };
-
-  // Deleting an environment also detaches any test pointing at it (falls
-  // back to local execution) rather than deleting those tests too.
-  const handleDeleteEnvironment = async (environment: IntegrationEnvironment, deleteFromDisk: boolean) => {
-    if (environment.path === runningEnvironmentPath) {
-      await handleStopEnvironment(environment.path);
-    }
-    if (deleteFromDisk) await window.electron.deleteFileFromDisk(environment.path);
-    setEnvironments((prev) => prev.filter((e) => e.path !== environment.path));
-    setTests((prev) =>
-      prev.map((t) => (t.environmentPath === environment.path ? { ...t, environmentPath: null } : t))
-    );
-    if (activeEnvironmentPath === environment.path) setActiveEnvironmentPath(null);
-  };
-
-  // "delete from disk" here only ever reaches the
-  // environment the wizard generated for it (see handleDeleteEnvironment),
-  // never the repo directory itself.
-  const handleDeleteRepo = async (repo: Repo, deleteFromDisk: boolean) => {
-    const linkedEnvironment = environments.find((e) => e.path === repo.environmentPath);
-    if (linkedEnvironment) {
-      await handleDeleteEnvironment(linkedEnvironment, deleteFromDisk);
-    }
-    setRepos((prev) => prev.filter((r) => r.path !== repo.path));
+  const handleSave = async () => {
+    if (!editorRef.current || !activeFile) return;
+    await fileActions.saveFileContent(activeFile, editorRef.current.getValue());
   };
 
   const handleConfirmDelete = async (deleteFromDisk: boolean) => {
     if (!pendingDelete) return;
     switch (pendingDelete.kind) {
       case 'file':
-        await handleDeleteFile(pendingDelete.item, deleteFromDisk);
+        await fileActions.handleDeleteFile(pendingDelete.item, deleteFromDisk);
         break;
       case 'test':
-        handleDeleteTest(pendingDelete.item);
+        testActions.handleDeleteTest(pendingDelete.item);
         break;
       case 'environment':
-        await handleDeleteEnvironment(pendingDelete.item, deleteFromDisk);
+        await environmentActions.handleDeleteEnvironment(pendingDelete.item, deleteFromDisk);
         break;
       case 'repo':
-        await handleDeleteRepo(pendingDelete.item, deleteFromDisk);
+        await repoActions.handleDeleteRepo(pendingDelete.item, deleteFromDisk);
         break;
     }
     setPendingDelete(null);
-  };
-
-  const handleSelectTarget = (target: TestTarget) => {
-    if (!targetPickerFor) return;
-    setTests((prev) =>
-      prev.map((t) =>
-        t.id === targetPickerFor && t.spec.kind === 'target'
-          ? { ...t, spec: { kind: 'target', target } }
-          : t
-      )
-    );
-    setTargetPickerFor(null);
-  };
-
-  const handleCreateNewFunction = () => {
-    setTargetPickerFor(null);
-    setActiveSection('Files');
-  };
-
-  const activeFile = files.find((f) => f.path === activePath) ?? null;
-  const activeTest = tests.find((t) => t.id === activeTestId) ?? null;
-  const activeRepo = repos.find((r) => r.environmentPath === activeEnvironmentPath) ?? null;
-  const activeEnvironment =
-    environments.find((e) => e.path === activeEnvironmentPath) ?? null;
-  const displayedEnvironmentStatus =
-    activeEnvironmentPath && activeEnvironmentPath === runningEnvironmentPath
-      ? environmentStatus
-      : 'idle';
-
-  const activeTestEnvironment =
-    environments.find((e) => e.path === activeTest?.environmentPath) ?? null;
-  const activeTestEnvironmentStatus: EnvironmentStatus =
-    activeTest?.environmentPath && activeTest.environmentPath === runningEnvironmentPath
-      ? environmentStatus
-      : 'idle';
-
-  const handleSave = async () => {
-    if (!editorRef.current || !activeFile) return;
-    const content = editorRef.current.getValue();
-    await window.electron.saveFile(activeFile.path, content);
-    const updated: ImportedFile = { ...activeFile, content };
-    setFiles((prev) => replaceByPath(prev, activeFile.path, updated));
-  };
-
-  const startSuiteRun = (testId: string) => {
-    const runId = crypto.randomUUID();
-    runIdToTestId.current[runId] = testId;
-    setSuiteRuns((prev) => ({
-      ...prev,
-      [testId]: { runId, status: 'running', failedReason: null, testOrder: [], tests: {} },
-    }));
-    return runId;
-  };
-
-  const handleRunTest = async () => {
-    if (!activeTest) return;
-
-    if (activeTest.spec.kind === 'target') {
-      const target = activeTest.spec.target;
-      if (!target) {
-        setTargetPickerFor(activeTest.id);
-        return;
-      }
-
-      const targetFile = files.find((f) => f.path === target.filePath);
-      if (!targetFile) {
-        setRunSetupError('Target file is no longer available. Configure a new target.');
-        return;
-      }
-      setRunSetupError(null);
-
-      const extension = getExtension(targetFile.path);
-      if (extension === 'cpp' || extension === 'hpp') {
-        const runId = startSuiteRun(activeTest.id);
-        await window.electron.runCppTarget({
-          runId,
-          testName: activeTest.name,
-          target,
-          sourceContent: targetFile.content,
-          extension,
-          environmentPath: activeTest.environmentPath,
-        });
-        return;
-      }
-
-      const runId = startSuiteRun(activeTest.id);
-      await window.electron.runTargetSuite({
-        runId,
-        testName: activeTest.name,
-        target,
-        sourceContent: targetFile.content,
-        extension,
-        environmentPath: activeTest.environmentPath,
-      });
-      return;
-    }
-
-    setRunSetupError(null);
-    const runId = startSuiteRun(activeTest.id);
-    if (activeTest.environmentPath) {
-      await window.electron.supervisorExecute(runId, activeTest.spec.entryPoint);
-    } else {
-      await window.electron.runLocalSuite(runId, activeTest.spec.entryPoint);
-    }
-  };
-
-  const handleCancelTest = async () => {
-    if (!activeTest) return;
-    const run = suiteRuns[activeTest.id];
-    if (!run) return;
-
-    if (activeTest.spec.kind === 'target' && activeTest.spec.target) {
-      const target = activeTest.spec.target;
-      const targetFile = files.find((f) => f.path === target.filePath);
-      const extension = targetFile ? getExtension(targetFile.path) : '';
-      if (extension === 'cpp' || extension === 'hpp') {
-        await window.electron.cancelCppTarget();
-        return;
-      }
-    }
-
-    if (activeTest.environmentPath) {
-      await window.electron.supervisorCancel(run.runId, activeTest.environmentPath);
-    } else {
-      await window.electron.cancelLocalSuite(run.runId);
-    }
   };
 
   return (
@@ -423,15 +118,15 @@ function App() {
 
       {activeSection === 'Repos' && (
         <ReposPanel
-          repos={repos}
+          repos={workspace.repos}
           activePath={activeRepo?.path ?? null}
-          onSelect={handleSelectRepo}
+          onSelect={repoActions.handleSelectRepo}
           onDelete={(repo) => setPendingDelete({ kind: 'repo', item: repo })}
         />
       )}
       {activeSection === 'Files' && (
         <FilesPanel
-          files={files}
+          files={workspace.files}
           activePath={activePath}
           onSelect={setActivePath}
           onDelete={(file) => setPendingDelete({ kind: 'file', item: file })}
@@ -439,8 +134,8 @@ function App() {
       )}
       {activeSection === 'Tests' && (
         <TestsPanel
-          tests={tests}
-          environments={environments}
+          tests={workspace.tests}
+          environments={workspace.environments}
           activeId={activeTestId}
           onSelect={setActiveTestId}
           onConfigure={(test) => setTargetPickerFor(test.id)}
@@ -449,7 +144,7 @@ function App() {
       )}
       {activeSection === 'Environments' && (
         <EnvironmentsPanel
-          environments={environments}
+          environments={workspace.environments}
           activePath={activeEnvironmentPath}
           onSelect={setActiveEnvironmentPath}
           onDelete={(environment) => setPendingDelete({ kind: 'environment', item: environment })}
@@ -459,11 +154,11 @@ function App() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Toolbar
           activeSection={activeSection}
-          environments={environments}
-          onImport={handleImport}
-          onAddTest={handleAddTest}
-          onAddEnvironment={handleAddEnvironment}
-          onAddRepo={handleAddRepo}
+          environments={workspace.environments}
+          onImport={fileActions.handleImport}
+          onAddTest={testActions.handleAddTest}
+          onAddEnvironment={environmentActions.handleAddEnvironment}
+          onAddRepo={repoActions.handleAddRepo}
         />
 
         {activeSection === 'Environments' ? (
@@ -471,9 +166,9 @@ function App() {
             <EnvironmentDetail
               environment={activeEnvironment}
               status={displayedEnvironmentStatus}
-              log={activeEnvironmentPath === runningEnvironmentPath ? environmentLog : []}
-              onStart={() => handleStartEnvironment(activeEnvironment.path)}
-              onStop={() => handleStopEnvironment(activeEnvironment.path)}
+              log={activeEnvironmentPath === environmentRuntime.runningEnvironmentPath ? environmentRuntime.environmentLog : []}
+              onStart={() => environmentRuntime.handleStartEnvironment(activeEnvironment.path)}
+              onStop={() => environmentRuntime.handleStopEnvironment(activeEnvironment.path)}
             />
           ) : (
             <div className="flex flex-1 items-center justify-center text-sm text-neutral-500">
@@ -486,16 +181,16 @@ function App() {
               test={activeTest}
               environment={activeTestEnvironment}
               environmentStatus={activeTestEnvironmentStatus}
-              suiteRun={suiteRuns[activeTest.id]}
-              runSetupError={runSetupError}
-              onRun={handleRunTest}
-              onCancel={handleCancelTest}
+              suiteRun={suiteRunsApi.suiteRuns[activeTest.id]}
+              runSetupError={testExecution.runSetupError}
+              onRun={testExecution.handleRunTest}
+              onCancel={testExecution.handleCancelTest}
               onConfigureTarget={() => setTargetPickerFor(activeTest.id)}
               onStartEnvironment={() =>
-                activeTest.environmentPath && handleStartEnvironment(activeTest.environmentPath)
+                activeTest.environmentPath && environmentRuntime.handleStartEnvironment(activeTest.environmentPath)
               }
               onStopEnvironment={() =>
-                activeTest.environmentPath && handleStopEnvironment(activeTest.environmentPath)
+                activeTest.environmentPath && environmentRuntime.handleStopEnvironment(activeTest.environmentPath)
               }
             />
           ) : (
@@ -549,9 +244,9 @@ function App() {
       <SelectFunctionModal
         open={targetPickerFor !== null}
         onClose={() => setTargetPickerFor(null)}
-        files={files}
-        onSelect={handleSelectTarget}
-        onCreateNew={handleCreateNewFunction}
+        files={workspace.files}
+        onSelect={testActions.handleSelectTarget}
+        onCreateNew={testActions.handleCreateNewFunction}
       />
 
       <ConfirmDeleteModal
