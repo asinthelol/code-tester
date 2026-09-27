@@ -95,7 +95,7 @@ function SelectFunctionModal({
   const parsableFiles = files.filter((file) => isParsable(file.path));
 
   return (
-    <Modal open={open} onClose={handleClose} title="Select Function">
+    <Modal open={open} title="Select Function">
       {!selectedFile ? (
         <div className="flex flex-col gap-2">
           {parsableFiles.length === 0 ? (

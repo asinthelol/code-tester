@@ -102,7 +102,7 @@ function RepoWizardModal({ open, onClose, onComplete }: RepoWizardModalProps) {
   };
 
   return (
-    <Modal open={open} onClose={handleClose} title="Add Repo">
+    <Modal open={open} title="Add Repo">
       {step === 'pick' && (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-neutral-500">
