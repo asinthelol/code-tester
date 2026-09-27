@@ -3,6 +3,7 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 export default {
   packagerConfig: {
+    name: 'code-tester',
     asar: true,
     icon: './public/icon'
   },
