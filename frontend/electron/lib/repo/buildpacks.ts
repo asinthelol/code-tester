@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { lineBuffered } from './ndjson.ts';
+import { lineBuffered } from '../ndjson.ts';
 
 // CNB builder covering Node/Python/Go/Java.
 export const DEFAULT_BUILDER_IMAGE = 'paketobuildpacks/builder-jammy-base';

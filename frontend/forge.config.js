@@ -4,6 +4,7 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 export default {
   packagerConfig: {
     asar: true,
+    icon: './public/icon'
   },
 
   rebuildConfig: {},
@@ -11,7 +12,9 @@ export default {
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        setupIcon: './public/icon.ico'
+      },
     },
     {
       name: '@electron-forge/maker-zip',

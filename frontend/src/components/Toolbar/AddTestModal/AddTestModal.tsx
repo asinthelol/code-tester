@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Modal from '../../ui/Modal/Modal';
-import type { IntegrationEnvironment, TestSpec } from '../../../shared/lib/types';
+import type { IntegrationEnvironment, TestSpec } from '../../../../shared/types';
 
 interface AddTestModalProps {
   open: boolean;

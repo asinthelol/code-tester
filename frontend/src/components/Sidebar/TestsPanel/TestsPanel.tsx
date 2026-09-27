@@ -1,5 +1,5 @@
 import { MdOutlineDelete, MdOutlineScience, MdOutlineTune } from 'react-icons/md';
-import type { IntegrationEnvironment, Test } from '../../../shared/lib/types';
+import type { IntegrationEnvironment, Test } from '../../../../shared/types';
 
 interface TestsPanelProps {
   tests: Test[];

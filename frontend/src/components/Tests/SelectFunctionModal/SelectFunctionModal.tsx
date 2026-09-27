@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import Modal from '../../ui/Modal/Modal';
 import { extractFunctions, isParsable } from '../../../shared/lib/treeSitter';
-import type { FunctionInfo, ImportedFile, TestTarget } from '../../../shared/lib/types';
+import type { FunctionInfo } from '../../../shared/lib/types';
+import type { ImportedFile, TestTarget } from '../../../../shared/types';
 
 interface SelectFunctionModalProps {
   open: boolean;

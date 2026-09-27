@@ -1,89 +1,82 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
+import { IPC_CHANNELS } from '../shared/electronApi.ts';
+import type { ElectronAPI } from '../shared/electronApi.ts';
 import type {
   EnvironmentEvent,
-  ImportedFile,
-  IntegrationEnvironment,
   PersistedState,
-  RepoAnalysis,
   RepoScaffoldEvent,
   ScaffoldRequest,
   TargetRunRequest,
-} from '../src/shared/lib/types.ts';
+} from '../shared/types.ts';
 import type { Event as SupervisorEvent } from '../../protocol/v1/typescript/index.ts';
 
-contextBridge.exposeInMainWorld('electron', {
-  importFile: (): Promise<ImportedFile | null> =>
-    ipcRenderer.invoke('file:import'),
+const api: ElectronAPI = {
+  importFile: () => ipcRenderer.invoke(IPC_CHANNELS.fileImport),
 
-  saveFile: (filePath: string, content: string): Promise<void> =>
-    ipcRenderer.invoke('file:save', filePath, content),
+  saveFile: (filePath: string, content: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.fileSave, filePath, content),
 
-  importEnvironment: (): Promise<IntegrationEnvironment | null> =>
-    ipcRenderer.invoke('environment:import'),
+  importEnvironment: () => ipcRenderer.invoke(IPC_CHANNELS.environmentImport),
 
-  environmentStart: (configPath: string): Promise<void> =>
-    ipcRenderer.invoke('environment:start', configPath),
+  environmentStart: (configPath: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.environmentStart, configPath),
 
-  environmentCancelStart: (): Promise<void> =>
-    ipcRenderer.invoke('environment:cancelStart'),
+  environmentCancelStart: () => ipcRenderer.invoke(IPC_CHANNELS.environmentCancelStart),
 
-  environmentStop: (configPath: string): Promise<void> =>
-    ipcRenderer.invoke('environment:stop', configPath),
+  environmentStop: (configPath: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.environmentStop, configPath),
 
-  onEnvironmentEvent: (listener: (event: EnvironmentEvent) => void): (() => void) => {
+  onEnvironmentEvent: (listener: (event: EnvironmentEvent) => void) => {
     const handler = (_event: IpcRendererEvent, payload: EnvironmentEvent) => listener(payload);
-    ipcRenderer.on('environment:event', handler);
-    return () => ipcRenderer.removeListener('environment:event', handler);
+    ipcRenderer.on(IPC_CHANNELS.environmentEvent, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.environmentEvent, handler);
   },
 
-  supervisorExecute: (runId: string, entryPoint: string): Promise<void> =>
-    ipcRenderer.invoke('supervisor:execute', runId, entryPoint),
+  supervisorExecute: (runId: string, entryPoint: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.supervisorExecute, runId, entryPoint),
 
-  supervisorCancel: (runId: string, configPath: string): Promise<void> =>
-    ipcRenderer.invoke('supervisor:cancel', runId, configPath),
+  supervisorCancel: (runId: string, configPath: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.supervisorCancel, runId, configPath),
 
-  runTargetSuite: (request: TargetRunRequest): Promise<void> =>
-    ipcRenderer.invoke('suite:runTarget', request),
+  runTargetSuite: (request: TargetRunRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.suiteRunTarget, request),
 
-  runCppTarget: (request: TargetRunRequest): Promise<void> =>
-    ipcRenderer.invoke('suite:runCppTarget', request),
+  runCppTarget: (request: TargetRunRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.suiteRunCppTarget, request),
 
-  cancelCppTarget: (): Promise<void> => ipcRenderer.invoke('suite:cancelCppTarget'),
+  cancelCppTarget: () => ipcRenderer.invoke(IPC_CHANNELS.suiteCancelCppTarget),
 
-  runLocalSuite: (runId: string, entryPoint: string): Promise<void> =>
-    ipcRenderer.invoke('suite:runLocal', runId, entryPoint),
+  runLocalSuite: (runId: string, entryPoint: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.suiteRunLocal, runId, entryPoint),
 
-  cancelLocalSuite: (runId: string): Promise<void> =>
-    ipcRenderer.invoke('suite:cancelLocal', runId),
+  cancelLocalSuite: (runId: string) => ipcRenderer.invoke(IPC_CHANNELS.suiteCancelLocal, runId),
 
-  onSupervisorEvent: (listener: (event: SupervisorEvent) => void): (() => void) => {
+  onSupervisorEvent: (listener: (event: SupervisorEvent) => void) => {
     const handler = (_event: IpcRendererEvent, payload: SupervisorEvent) => listener(payload);
-    ipcRenderer.on('supervisor:event', handler);
-    return () => ipcRenderer.removeListener('supervisor:event', handler);
+    ipcRenderer.on(IPC_CHANNELS.supervisorEvent, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.supervisorEvent, handler);
   },
 
-  pickRepoDirectory: (): Promise<{ path: string; name: string } | null> =>
-    ipcRenderer.invoke('repo:pickDirectory'),
+  pickRepoDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.repoPickDirectory),
 
-  analyzeRepo: (repoPath: string): Promise<RepoAnalysis> =>
-    ipcRenderer.invoke('repo:analyze', repoPath),
+  analyzeRepo: (repoPath: string) => ipcRenderer.invoke(IPC_CHANNELS.repoAnalyze, repoPath),
 
-  scaffoldRepo: (request: ScaffoldRequest): Promise<IntegrationEnvironment> =>
-    ipcRenderer.invoke('repo:scaffold', request),
+  scaffoldRepo: (request: ScaffoldRequest) => ipcRenderer.invoke(IPC_CHANNELS.repoScaffold, request),
 
-  cancelScaffoldRepo: (): Promise<void> => ipcRenderer.invoke('repo:cancelScaffold'),
+  cancelScaffoldRepo: () => ipcRenderer.invoke(IPC_CHANNELS.repoCancelScaffold),
 
-  onRepoScaffoldEvent: (listener: (event: RepoScaffoldEvent) => void): (() => void) => {
+  onRepoScaffoldEvent: (listener: (event: RepoScaffoldEvent) => void) => {
     const handler = (_event: IpcRendererEvent, payload: RepoScaffoldEvent) => listener(payload);
-    ipcRenderer.on('repo:scaffold:event', handler);
-    return () => ipcRenderer.removeListener('repo:scaffold:event', handler);
+    ipcRenderer.on(IPC_CHANNELS.repoScaffoldEvent, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.repoScaffoldEvent, handler);
   },
 
-  loadState: (): Promise<PersistedState> => ipcRenderer.invoke('state:load'),
+  loadState: () => ipcRenderer.invoke(IPC_CHANNELS.stateLoad),
 
-  saveState: (state: PersistedState): Promise<void> => ipcRenderer.invoke('state:save', state),
+  saveState: (state: PersistedState) => ipcRenderer.invoke(IPC_CHANNELS.stateSave, state),
 
-  deleteFileFromDisk: (filePath: string): Promise<void> =>
-    ipcRenderer.invoke('fs:deleteFile', filePath),
-});
+  deleteFileFromDisk: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.fsDeleteFile, filePath),
+};
+
+contextBridge.exposeInMainWorld('electron', api);

@@ -7,12 +7,12 @@ import {
   serializeCompose,
   writeComposeFile,
 } from './composeGenerator.ts';
-import { parseEnvironmentConfig } from './parseEnvironmentConfig.ts';
+import { parseEnvironmentConfig } from '../environment/parseEnvironmentConfig.ts';
 import type {
   IntegrationEnvironment,
   RepoScaffoldEvent,
   ScaffoldRequest,
-} from '../../src/shared/lib/types.ts';
+} from '../../../shared/types.ts';
 
 export function cancelScaffold(): void {
   cancelBuildpacksBuild();

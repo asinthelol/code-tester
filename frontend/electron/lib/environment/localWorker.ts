@@ -2,8 +2,8 @@ import { app } from 'electron';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import type { Command, Event } from '../../../protocol/v1/typescript/index.ts';
-import { lineBuffered } from './ndjson.ts';
+import type { Command, Event } from '../../../../protocol/v1/typescript/index.ts';
+import { lineBuffered } from '../ndjson.ts';
 
 const CANCEL_GRACE_MS = 5_000;
 
@@ -22,9 +22,10 @@ export function attachLocalWorker(
 ): void {
   detachLocalWorker();
 
-  const child = spawn('node', [bundlePath(), suiteRoot], {
+  const child = spawn(process.execPath, [bundlePath(), suiteRoot], {
     shell: false,
     stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
   });
   worker = child;
 

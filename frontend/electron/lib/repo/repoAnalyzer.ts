@@ -5,7 +5,7 @@ import type {
   BackingServiceType,
   DetectedService,
   RepoAnalysis,
-} from '../../src/shared/lib/types.ts';
+} from '../../../shared/types.ts';
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', '.venv', 'venv', 'dist', 'build']);
 const MANIFEST_FILES = ['package.json', 'requirements.txt', 'go.mod', 'Cargo.toml'];

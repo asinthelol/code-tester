@@ -1,5 +1,5 @@
 import { MdOutlineDelete, MdOutlineFolder } from 'react-icons/md';
-import type { Repo } from '../../../shared/lib/types';
+import type { Repo } from '../../../../shared/types';
 
 interface ReposPanelProps {
   repos: Repo[];
