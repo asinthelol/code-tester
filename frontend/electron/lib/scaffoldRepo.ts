@@ -12,7 +12,7 @@ import type {
   IntegrationEnvironment,
   RepoScaffoldEvent,
   ScaffoldRequest,
-} from '../../src/shared/lib/types.ts';
+} from '../../shared/types.ts';
 
 export function cancelScaffold(): void {
   cancelBuildpacksBuild();

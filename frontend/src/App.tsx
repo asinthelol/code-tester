@@ -13,15 +13,14 @@ import SelectFunctionModal from './components/Tests/SelectFunctionModal/SelectFu
 import TestDetail from './components/Tests/TestDetail/TestDetail';
 import Toolbar from './components/Toolbar/Toolbar';
 import { getExtension } from './shared/lib/path';
+import type { EnvironmentStatus, PendingDelete, SuiteRun } from './shared/lib/types';
 import type {
-  EnvironmentStatus,
   ImportedFile,
   IntegrationEnvironment,
   Repo,
-  SuiteRun,
   Test,
   TestTarget,
-} from './shared/lib/types';
+} from '../shared/types';
 
 function upsertByPath<T extends { path: string }>(list: T[], item: T) {
   const existingIndex = list.findIndex((f) => f.path === item.path);
@@ -36,12 +35,6 @@ function upsertByPath<T extends { path: string }>(list: T[], item: T) {
 function replaceByPath<T extends { path: string }>(list: T[], oldPath: string, updated: T) {
   return list.map((item) => (item.path === oldPath ? updated : item));
 }
-
-type PendingDelete =
-  | { kind: 'file'; item: ImportedFile }
-  | { kind: 'test'; item: Test }
-  | { kind: 'environment'; item: IntegrationEnvironment }
-  | { kind: 'repo'; item: Repo };
 
 function App() {
   const [files, setFiles] = useState<ImportedFile[]>([]);

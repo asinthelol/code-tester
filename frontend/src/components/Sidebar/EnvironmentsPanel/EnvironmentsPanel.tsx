@@ -1,5 +1,5 @@
 import { MdOutlineDelete, MdOutlineDns } from 'react-icons/md';
-import type { IntegrationEnvironment } from '../../../shared/lib/types';
+import type { IntegrationEnvironment } from '../../../../shared/types';
 
 interface EnvironmentsPanelProps {
   environments: IntegrationEnvironment[];

@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { PersistedState } from '../../src/shared/lib/types.ts';
+import type { PersistedState } from '../../shared/types.ts';
 
 const EMPTY_STATE: PersistedState = {
   files: [],

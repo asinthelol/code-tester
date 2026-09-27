@@ -5,7 +5,7 @@ import AddButton from './AddButton/AddButton';
 import AddTestModal from './AddTestModal/AddTestModal';
 import RepoWizardModal from './RepoWizardModal/RepoWizardModal';
 import Breadcrumbs from './Breadcrumbs/Breadcrumbs';
-import type { ImportedFile, IntegrationEnvironment, Repo, TestSpec } from '../../shared/lib/types';
+import type { ImportedFile, IntegrationEnvironment, Repo, TestSpec } from '../../../shared/types';
 
 interface ToolbarProps {
   activeSection: string;

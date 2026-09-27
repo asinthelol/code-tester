@@ -6,7 +6,7 @@ import { sanitizeServiceName } from './repoAnalyzer.ts';
 import type {
   BackingServiceSuggestion,
   DetectedService,
-} from '../../src/shared/lib/types.ts';
+} from '../../shared/types.ts';
 
 const BACKING_SERVICE_BLOCKS: Record<string, Record<string, unknown>> = {
   postgres: {

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { lineBuffered } from './ndjson.ts';
 import { buildCppSource, synthesizeDockerTarget, synthesizeLocalTarget } from './synthesizeTarget.ts';
 import type { SynthesizedSuite } from './synthesizeTarget.ts';
-import type { TargetRunRequest } from '../../src/shared/lib/types.ts';
+import type { TargetRunRequest } from '../../shared/types.ts';
 import type { Event as SuiteEvent } from '../../../protocol/v1/typescript/index.ts';
 
 

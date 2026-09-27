@@ -28,11 +28,12 @@ import { pickRepoDirectory } from './lib/pickRepoDirectory.ts';
 import { cancelScaffold, scaffoldRepo } from './lib/scaffoldRepo.ts';
 import { loadState, saveState } from './lib/appState.ts';
 import { deleteFileFromDisk } from './lib/deleteFile.ts';
+import { IPC_CHANNELS } from '../shared/electronApi.ts';
 import type {
   PersistedState,
   ScaffoldRequest,
   TargetRunRequest,
-} from '../src/shared/lib/types.ts';
+} from '../shared/types.ts';
 import type { Event as SuiteEvent } from '../../protocol/v1/typescript/index.ts';
 
 function isTerminalSuiteEvent(event: SuiteEvent): boolean {
@@ -64,25 +65,25 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 
 Menu.setApplicationMenu(null);
 
-ipcMain.handle('file:import', (event) =>
+ipcMain.handle(IPC_CHANNELS.fileImport, (event) =>
   importFile(BrowserWindow.fromWebContents(event.sender))
 );
 
-ipcMain.handle('file:save', (_event, filePath: string, content: string) =>
+ipcMain.handle(IPC_CHANNELS.fileSave, (_event, filePath: string, content: string) =>
   saveFile(filePath, content)
 );
 
-ipcMain.handle('environment:import', (event) =>
+ipcMain.handle(IPC_CHANNELS.environmentImport, (event) =>
   importEnvironment(BrowserWindow.fromWebContents(event.sender))
 );
 
-ipcMain.handle('environment:start', (event, configPath: string) =>
+ipcMain.handle(IPC_CHANNELS.environmentStart, (event, configPath: string) =>
   startEnvironment(configPath, (envEvent) => {
-    event.sender.send('environment:event', envEvent);
+    event.sender.send(IPC_CHANNELS.environmentEvent, envEvent);
     if (envEvent.type === 'environment.ready') {
       readyEnvironments.add(configPath);
       attachSupervisor(configPath, (supervisorEvent) => {
-        event.sender.send('supervisor:event', supervisorEvent);
+        event.sender.send(IPC_CHANNELS.supervisorEvent, supervisorEvent);
         if (isTerminalSuiteEvent(supervisorEvent)) {
           runPendingCleanup(supervisorEvent.runId);
         }
@@ -91,24 +92,24 @@ ipcMain.handle('environment:start', (event, configPath: string) =>
   })
 );
 
-ipcMain.handle('environment:cancelStart', () => cancelStart());
+ipcMain.handle(IPC_CHANNELS.environmentCancelStart, () => cancelStart());
 
-ipcMain.handle('environment:stop', (event, configPath: string) => {
+ipcMain.handle(IPC_CHANNELS.environmentStop, (event, configPath: string) => {
   detachSupervisor();
   readyEnvironments.delete(configPath);
   return stopEnvironment(configPath, (envEvent) =>
-    event.sender.send('environment:event', envEvent)
+    event.sender.send(IPC_CHANNELS.environmentEvent, envEvent)
   );
 });
 
-ipcMain.handle('supervisor:execute', (_event, runId: string, entryPoint: string) =>
+ipcMain.handle(IPC_CHANNELS.supervisorExecute, (_event, runId: string, entryPoint: string) =>
   executeSuite(runId, entryPoint, adapterForExtension(path.extname(entryPoint).slice(1)))
 );
 
-ipcMain.handle('supervisor:cancel', (event, runId: string, configPath: string) =>
+ipcMain.handle(IPC_CHANNELS.supervisorCancel, (event, runId: string, configPath: string) =>
   cancelSuite(runId, configPath, () => {
     console.warn(`Supervisor did not acknowledge cancel for run ${runId}; force-killed.`);
-    event.sender.send('supervisor:event', {
+    event.sender.send(IPC_CHANNELS.supervisorEvent, {
       protocolVersion: 1,
       runId,
       type: 'run.aborted',
@@ -117,7 +118,7 @@ ipcMain.handle('supervisor:cancel', (event, runId: string, configPath: string) =
   })
 );
 
-ipcMain.handle('suite:runTarget', async (event, request: TargetRunRequest) => {
+ipcMain.handle(IPC_CHANNELS.suiteRunTarget, async (event, request: TargetRunRequest) => {
   const { runId, testName, target, sourceContent, extension, environmentPath } = request;
   const adapter = adapterForExtension(extension);
   const buildSource = extension === 'py' ? buildPythonSource : undefined;
@@ -138,7 +139,7 @@ ipcMain.handle('suite:runTarget', async (event, request: TargetRunRequest) => {
 
   const synthesized = await synthesizeLocalTarget(sourceContent, testName, target, extension, buildSource);
   attachLocalWorker(synthesized.suiteRoot, (workerEvent) => {
-    event.sender.send('supervisor:event', workerEvent);
+    event.sender.send(IPC_CHANNELS.supervisorEvent, workerEvent);
     if (isTerminalSuiteEvent(workerEvent)) {
       clearLocalCancelGrace();
       detachLocalWorker();
@@ -148,15 +149,15 @@ ipcMain.handle('suite:runTarget', async (event, request: TargetRunRequest) => {
   sendLocalCommand({ protocolVersion: 1, runId, type: 'run', adapter, entryPoint: synthesized.entryPoint });
 });
 
-ipcMain.handle('suite:runCppTarget', (event, request: TargetRunRequest) =>
-  runCppTarget(request, (suiteEvent) => event.sender.send('supervisor:event', suiteEvent))
+ipcMain.handle(IPC_CHANNELS.suiteRunCppTarget, (event, request: TargetRunRequest) =>
+  runCppTarget(request, (suiteEvent) => event.sender.send(IPC_CHANNELS.supervisorEvent, suiteEvent))
 );
 
-ipcMain.handle('suite:cancelCppTarget', () => cancelCppTarget());
+ipcMain.handle(IPC_CHANNELS.suiteCancelCppTarget, () => cancelCppTarget());
 
-ipcMain.handle('suite:runLocal', (event, runId: string, entryPoint: string) => {
+ipcMain.handle(IPC_CHANNELS.suiteRunLocal, (event, runId: string, entryPoint: string) => {
   attachLocalWorker(process.cwd(), (workerEvent) => {
-    event.sender.send('supervisor:event', workerEvent);
+    event.sender.send(IPC_CHANNELS.supervisorEvent, workerEvent);
     if (isTerminalSuiteEvent(workerEvent)) {
       clearLocalCancelGrace();
       detachLocalWorker();
@@ -166,10 +167,10 @@ ipcMain.handle('suite:runLocal', (event, runId: string, entryPoint: string) => {
   sendLocalCommand({ protocolVersion: 1, runId, type: 'run', adapter, entryPoint });
 });
 
-ipcMain.handle('suite:cancelLocal', (event, runId: string) =>
+ipcMain.handle(IPC_CHANNELS.suiteCancelLocal, (event, runId: string) =>
   cancelLocalSuite(runId, () => {
     console.warn(`Local worker did not acknowledge cancel for run ${runId}; force-killed.`);
-    event.sender.send('supervisor:event', {
+    event.sender.send(IPC_CHANNELS.supervisorEvent, {
       protocolVersion: 1,
       runId,
       type: 'run.aborted',
@@ -177,23 +178,23 @@ ipcMain.handle('suite:cancelLocal', (event, runId: string) =>
   })
 );
 
-ipcMain.handle('repo:pickDirectory', (event) =>
+ipcMain.handle(IPC_CHANNELS.repoPickDirectory, (event) =>
   pickRepoDirectory(BrowserWindow.fromWebContents(event.sender))
 );
 
-ipcMain.handle('repo:analyze', (_event, repoPath: string) => analyzeRepo(repoPath));
+ipcMain.handle(IPC_CHANNELS.repoAnalyze, (_event, repoPath: string) => analyzeRepo(repoPath));
 
-ipcMain.handle('repo:scaffold', (event, request: ScaffoldRequest) =>
-  scaffoldRepo(request, (scaffoldEvent) => event.sender.send('repo:scaffold:event', scaffoldEvent))
+ipcMain.handle(IPC_CHANNELS.repoScaffold, (event, request: ScaffoldRequest) =>
+  scaffoldRepo(request, (scaffoldEvent) => event.sender.send(IPC_CHANNELS.repoScaffoldEvent, scaffoldEvent))
 );
 
-ipcMain.handle('repo:cancelScaffold', () => cancelScaffold());
+ipcMain.handle(IPC_CHANNELS.repoCancelScaffold, () => cancelScaffold());
 
-ipcMain.handle('state:load', () => loadState());
+ipcMain.handle(IPC_CHANNELS.stateLoad, () => loadState());
 
-ipcMain.handle('state:save', (_event, state: PersistedState) => saveState(state));
+ipcMain.handle(IPC_CHANNELS.stateSave, (_event, state: PersistedState) => saveState(state));
 
-ipcMain.handle('fs:deleteFile', (_event, filePath: string) => deleteFileFromDisk(filePath));
+ipcMain.handle(IPC_CHANNELS.fsDeleteFile, (_event, filePath: string) => deleteFileFromDisk(filePath));
 
 const STOP_ENVIRONMENTS_TIMEOUT_MS = 15_000;
 

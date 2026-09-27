@@ -6,7 +6,7 @@ import type {
   Repo,
   RepoAnalysis,
   ScaffoldRequest,
-} from '../../../shared/lib/types';
+} from '../../../../shared/types';
 
 interface RepoWizardModalProps {
   open: boolean;

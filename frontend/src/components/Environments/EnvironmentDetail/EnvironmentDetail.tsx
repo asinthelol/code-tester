@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { EnvironmentStatus, IntegrationEnvironment } from '../../../shared/lib/types';
+import type { EnvironmentStatus } from '../../../shared/lib/types';
+import type { IntegrationEnvironment } from '../../../../shared/types';
 
 interface EnvironmentDetailProps {
   environment: IntegrationEnvironment;

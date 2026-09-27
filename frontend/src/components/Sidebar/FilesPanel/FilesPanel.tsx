@@ -1,5 +1,5 @@
 import { MdOutlineDelete, MdOutlineDescription } from 'react-icons/md';
-import type { ImportedFile } from '../../../shared/lib/types';
+import type { ImportedFile } from '../../../../shared/types';
 
 interface FilesPanelProps {
   files: ImportedFile[];

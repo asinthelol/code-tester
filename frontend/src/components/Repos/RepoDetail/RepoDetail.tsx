@@ -1,4 +1,5 @@
-import type { EnvironmentStatus, IntegrationEnvironment, Repo } from '../../../shared/lib/types';
+import type { EnvironmentStatus } from '../../../shared/lib/types';
+import type { IntegrationEnvironment, Repo } from '../../../../shared/types';
 
 interface RepoDetailProps {
   repo: Repo;

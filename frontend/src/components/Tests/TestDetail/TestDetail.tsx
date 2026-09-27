@@ -1,5 +1,6 @@
 import SuiteResultsPanel from '../SuiteResultsPanel/SuiteResultsPanel';
-import type { EnvironmentStatus, IntegrationEnvironment, SuiteRun, Test } from '../../../shared/lib/types';
+import type { EnvironmentStatus, SuiteRun } from '../../../shared/lib/types';
+import type { IntegrationEnvironment, Test } from '../../../../shared/types';
 
 interface TestDetailProps {
   test: Test;

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { TestTarget } from '../../src/shared/lib/types.ts';
+import type { TestTarget } from '../../shared/types.ts';
 
 export interface SynthesizedSuite {
   suiteRoot: string;
