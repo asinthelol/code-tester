@@ -7,8 +7,6 @@ import type {
   PersistedState,
   RepoAnalysis,
   RepoScaffoldEvent,
-  RunEvent,
-  RunRequest,
   ScaffoldRequest,
   TargetRunRequest,
 } from '../src/shared/lib/types.ts';
@@ -20,17 +18,6 @@ contextBridge.exposeInMainWorld('electron', {
 
   saveFile: (filePath: string, content: string): Promise<void> =>
     ipcRenderer.invoke('file:save', filePath, content),
-
-  runStart: (request: RunRequest): Promise<void> =>
-    ipcRenderer.invoke('run:start', request),
-
-  runStop: (): Promise<void> => ipcRenderer.invoke('run:stop'),
-
-  onRunEvent: (listener: (event: RunEvent) => void): (() => void) => {
-    const handler = (_event: IpcRendererEvent, payload: RunEvent) => listener(payload);
-    ipcRenderer.on('run:event', handler);
-    return () => ipcRenderer.removeListener('run:event', handler);
-  },
 
   importEnvironment: (): Promise<IntegrationEnvironment | null> =>
     ipcRenderer.invoke('environment:import'),
@@ -58,6 +45,11 @@ contextBridge.exposeInMainWorld('electron', {
 
   runTargetSuite: (request: TargetRunRequest): Promise<void> =>
     ipcRenderer.invoke('suite:runTarget', request),
+
+  runCppTarget: (request: TargetRunRequest): Promise<void> =>
+    ipcRenderer.invoke('suite:runCppTarget', request),
+
+  cancelCppTarget: (): Promise<void> => ipcRenderer.invoke('suite:cancelCppTarget'),
 
   runLocalSuite: (runId: string, entryPoint: string): Promise<void> =>
     ipcRenderer.invoke('suite:runLocal', runId, entryPoint),

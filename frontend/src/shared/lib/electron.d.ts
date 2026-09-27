@@ -5,8 +5,6 @@ import type {
   PersistedState,
   RepoAnalysis,
   RepoScaffoldEvent,
-  RunEvent,
-  RunRequest,
   ScaffoldRequest,
   TargetRunRequest,
 } from './types';
@@ -17,9 +15,6 @@ declare global {
     electron: {
       importFile: () => Promise<ImportedFile | null>;
       saveFile: (filePath: string, content: string) => Promise<void>;
-      runStart: (request: RunRequest) => Promise<void>;
-      runStop: () => Promise<void>;
-      onRunEvent: (listener: (event: RunEvent) => void) => () => void;
       importEnvironment: () => Promise<IntegrationEnvironment | null>;
       environmentStart: (configPath: string) => Promise<void>;
       environmentCancelStart: () => Promise<void>;
@@ -28,6 +23,8 @@ declare global {
       supervisorExecute: (runId: string, entryPoint: string) => Promise<void>;
       supervisorCancel: (runId: string, configPath: string) => Promise<void>;
       runTargetSuite: (request: TargetRunRequest) => Promise<void>;
+      runCppTarget: (request: TargetRunRequest) => Promise<void>;
+      cancelCppTarget: () => Promise<void>;
       runLocalSuite: (runId: string, entryPoint: string) => Promise<void>;
       cancelLocalSuite: (runId: string) => Promise<void>;
       onSupervisorEvent: (listener: (event: SupervisorEvent) => void) => () => void;
