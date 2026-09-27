@@ -31,9 +31,12 @@ export async function buildWithBuildpacks(
     );
     activeBuild = child;
 
-    let lastLine = '';
+    // keep a small trailing window instead of last lines
+    // before crash.
+    const recentLines: string[] = [];
     const emitLine = lineBuffered((line) => {
-      lastLine = line;
+      recentLines.push(line);
+      if (recentLines.length > 8) recentLines.shift();
       onEvent(line);
     });
     child.stdout?.on('data', emitLine);
@@ -51,7 +54,7 @@ export async function buildWithBuildpacks(
       } else if (exitCode === 0) {
         resolve();
       } else {
-        reject(new Error(lastLine || `pack build exited with code ${exitCode}`));
+        reject(new Error(recentLines.join('\n') || `pack build exited with code ${exitCode}`));
       }
     });
   });
